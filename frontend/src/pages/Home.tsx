@@ -1,3 +1,4 @@
+import ApproachSection from '../components/ApproachSection'
 import HeroSection from '../components/HeroSection'
 import Navbar from '../components/Navbar'
 
@@ -7,7 +8,7 @@ function Home() {
       <Navbar />
       <main className="layout-shell">
         <HeroSection />
-        <section id="approach" className="h-80" />
+        <ApproachSection />
         <section id="how-it-works" className="h-80" />
         <section id="about" className="h-80" />
       </main>

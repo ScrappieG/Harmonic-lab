@@ -3,23 +3,32 @@ import { Button } from './ui/button'
 
 const feedbackItems = [
   {
-    label: 'Clarity',
-    status: 'strong',
-    description: 'Approach was well-structured. Consider stating time complexity earlier.',
-  },
-  {
-    label: 'Tradeoffs',
-    status: 'partial',
-    description: "Mentioned hash map vs. brute force but didn't compare space usage.",
+    label: 'Technical Solution',
+    rating: 3,
+    description: 'Correct approach with a clean implementation; edge-case handling can be tightened.',
   },
   {
     label: 'Communication',
-    status: 'strong',
-    description: 'Concise explanations. Filler words reduced from previous session.',
+    rating: 4,
+    description: 'Explanations were concise, structured, and easy to follow throughout the session.',
+  },
+  {
+    label: 'Problem Solving',
+    rating: 3,
+    description: 'Worked methodically and validated assumptions; could compare alternatives sooner.',
+  },
+  {
+    label: 'Pass/Fail',
+    rating: 4,
+    description: 'Pass. Strong signal for interview readiness at this difficulty level.',
   },
 ]
 
+const maxRating = 4
+
 function HeroSection() {
+  const averageRating = feedbackItems.reduce((sum, item) => sum + item.rating, 0) / feedbackItems.length
+
   return (
     <section className="pb-12 pt-12 md:pb-16 md:pt-16">
       <div className="mt-10 grid items-end gap-10 lg:grid-cols-2 lg:gap-12">
@@ -31,8 +40,8 @@ function HeroSection() {
           </h1>
 
           <p className="mt-7 max-w-xl text-base leading-relaxed text-stone-500 sm:text-lg">
-            Solve problems independently. Speak your reasoning out loud. Get structured feedback on how clearly you
-            explained your approach - not just whether you got the right answer.
+            Solve LeetCode problems independently, speak your thoughts out loud, and get feedback on how clearly you
+            explained your approach. Not just whether if you got the right answer.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -52,33 +61,41 @@ function HeroSection() {
             <div className="grid gap-6 text-stone-800 sm:grid-cols-2 sm:gap-8">
               <div>
                 <p className="brand-mono text-xs uppercase tracking-widest text-stone-400">Available as</p>
-                <p className="mt-2 text-xl lg:text-2xl">Chrome Extension + Web App</p>
+                <p className="mt-2 text-xl lg:text-xl">Chrome Extension + Web App</p>
               </div>
               <div className="border-l border-stone-300 pl-6 sm:pl-8">
                 <p className="brand-mono text-xs uppercase tracking-widest text-stone-400">Focus</p>
-                <p className="mt-2 text-xl lg:text-2xl">Technical Interview Prep</p>
+                <p className="mt-2 text-xl lg:text-xl">Technical Interview Prep</p>
               </div>
             </div>
           </div>
         </div>
 
-        <article className="rounded-lg border border-stone-300 bg-stone-200/50 p-6 shadow-sm sm:p-7">
-          <header className="mb-5 flex items-center justify-between text-stone-400">
+        <article className="rounded-lg border border-stone-300 bg-stone-200/50 p-5 shadow-sm sm:p-6">
+          <header className="mb-4 flex items-center justify-between text-stone-400">
             <div className="flex items-center gap-2.5 text-sm">
               <Circle className="size-2.5 fill-lime-800 text-lime-800" />
               <span className="brand-mono">Session feedback</span>
             </div>
-            <span className="brand-mono text-sm">2 min ago</span>
+            <div className="text-right">
+              <p className="brand-mono text-xs uppercase tracking-widest text-stone-500">Session score</p>
+              <p className="brand-mono text-sm text-stone-700">{averageRating.toFixed(1)}/4</p>
+            </div>
           </header>
 
-          <div className="space-y-5">
+          <div className="space-y-4">
             {feedbackItems.map((item, index) => (
-              <div key={item.label} className={index !== feedbackItems.length - 1 ? 'border-b border-stone-300 pb-5' : ''}>
+              <div key={item.label} className={index !== feedbackItems.length - 1 ? 'border-b border-stone-300 pb-4' : ''}>
                 <div className="mb-1.5 flex items-start justify-between gap-4">
                   <h3 className="brand-mono text-sm font-medium text-stone-700">{item.label}</h3>
-                  <span className="brand-mono rounded-sm bg-green-100 px-2 py-0.5 text-xs font-medium lowercase text-lime-900">
-                    {item.status}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: maxRating }).map((_, dotIndex) => (
+                      <span
+                        key={`${item.label}-${dotIndex}`}
+                        className={`size-2.5 rounded-full ${dotIndex < item.rating ? 'bg-stone-500' : 'bg-stone-300'}`}
+                      />
+                    ))}
+                  </div>
                 </div>
                 <p className="max-w-prose text-sm leading-7 text-stone-500">{item.description}</p>
               </div>
