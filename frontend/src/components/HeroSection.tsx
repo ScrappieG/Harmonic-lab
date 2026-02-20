@@ -49,12 +49,6 @@ function HeroSection() {
               Start practicing
               <ArrowRight className="size-4" />
             </Button>
-            <Button
-              variant="outline"
-              className="h-11 rounded-md border-stone-300 bg-transparent px-5 text-sm text-stone-800 hover:bg-stone-100"
-            >
-              See how it works
-            </Button>
           </div>
 
           <div className="mt-12 border-t border-stone-300 pt-7">

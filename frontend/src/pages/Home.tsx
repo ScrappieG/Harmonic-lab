@@ -1,6 +1,8 @@
+import AboutSection from '../components/AboutSection'
 import ApproachSection from '../components/ApproachSection'
 import HeroSection from '../components/HeroSection'
 import Navbar from '../components/Navbar'
+import WorkflowSection from '../components/WorkflowSection'
 
 function Home() {
   return (
@@ -8,10 +10,11 @@ function Home() {
       <Navbar />
       <main className="layout-shell">
         <HeroSection />
-        <ApproachSection />
-        <section id="how-it-works" className="h-80" />
-        <section id="about" className="h-80" />
       </main>
+
+      <ApproachSection />
+      <WorkflowSection />
+      <AboutSection />
     </div>
   )
 }

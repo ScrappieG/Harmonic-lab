@@ -15,8 +15,8 @@ const approachCards = [
 
 function ApproachSection() {
   return (
-    <section id="approach" className="py-20 md:py-24">
-      <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
+    <section id="approach" className="bg-stone-100 py-20 md:py-24">
+      <div className="layout-shell grid gap-12 lg:grid-cols-2 lg:gap-16">
         <div>
           <p className="brand-mono text-xs uppercase tracking-widest text-stone-400">Approach</p>
           <h2 className="brand-serif mt-5 max-w-md text-3xl leading-none tracking-tight text-stone-900 sm:text-6xl lg:text-5xl">
@@ -39,8 +39,8 @@ function ApproachSection() {
           <div className="mt-10 grid overflow-hidden rounded-lg border border-stone-300 bg-stone-100 shadow-sm md:grid-cols-3">
             {approachCards.map((card, index) => (
               <div key={card.title} className={index > 0 ? 'border-t border-stone-300 p-5 md:border-l md:border-t-0' : 'p-5'}>
-                <p className="brand-mono text-sm font-semibold uppercase tracking-wide text-lime-800">{card.title}</p>
-                <p className="mt-3 text-lg leading-snug text-stone-800 lg:text-xl">{card.value}</p>
+                <p className="brand-mono text-sm uppercase tracking-wide text-lime-800/60">{card.title}</p>
+                <p className="mt-3 text-md leading-snug text-stone-800 lg:text-lg">{card.value}</p>
               </div>
             ))}
           </div>

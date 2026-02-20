@@ -137,4 +137,66 @@
   .brand-mono {
     font-family: "Chivo Mono", monospace;
   }
+
+  .workflow-grid-shell {
+    @apply relative;
+  }
+
+  .workflow-grid {
+    @apply grid bg-stone-50/80 md:grid-cols-3;
+  }
+
+  .workflow-grid-cell {
+    @apply p-5 md:p-6;
+  }
+
+  .workflow-grid-line {
+    @apply pointer-events-none absolute hidden md:block;
+    border-color: rgba(142, 140, 138, 0.8);
+    border-style: dotted;
+    border-width: 1;
+  }
+
+  .workflow-grid-line-top {
+    left: -1rem;
+    right: -1rem;
+    top: 0;
+    border-top-width: 2px;
+  }
+
+  .workflow-grid-line-bottom {
+    bottom: 0;
+    left: -1rem;
+    right: -1rem;
+    border-top-width: 2px;
+  }
+
+  .workflow-grid-line-v0 {
+    bottom: -0.75rem;
+    left: 0;
+    top: -0.75rem;
+    border-left-width: 2px;
+  }
+
+  .workflow-grid-line-v1 {
+    bottom: -0.75rem;
+    left: 33.333%;
+    top: -0.75rem;
+    border-left-width: 2px;
+  }
+
+  .workflow-grid-line-v2 {
+    bottom: -0.75rem;
+    left: 66.666%;
+    top: -0.75rem;
+    border-left-width: 2px;
+  }
+
+  .workflow-grid-line-v3 {
+    bottom: -0.75rem;
+    left: 100%;
+    top: -0.75rem;
+    border-left-width: 2px;
+  }
+
 }
