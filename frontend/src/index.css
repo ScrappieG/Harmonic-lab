@@ -118,10 +118,23 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
   }
   body {
     margin: 0;
     @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  .layout-shell {
+    @apply mx-auto w-full max-w-6xl px-6 lg:px-10;
+  }
+
+  .brand-serif {
+    font-family: "Hedvig Letters Serif", serif;
+  }
+
+  .brand-mono {
+    font-family: "Chivo Mono", monospace;
   }
 }
