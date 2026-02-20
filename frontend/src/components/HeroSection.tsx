@@ -1,3 +1,4 @@
+import { motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, Circle } from 'lucide-react'
 import { Button } from './ui/button'
 
@@ -27,6 +28,7 @@ const feedbackItems = [
 const maxRating = 4
 
 function HeroSection() {
+  const reduceMotion = useReducedMotion() ?? false
   const averageRating = feedbackItems.reduce((sum, item) => sum + item.rating, 0) / feedbackItems.length
 
   return (
@@ -77,9 +79,37 @@ function HeroSection() {
             </div>
           </header>
 
-          <div className="space-y-4">
+          <motion.div
+            className="space-y-4"
+            initial={reduceMotion ? false : 'hidden'}
+            whileInView={reduceMotion ? undefined : 'visible'}
+            viewport={{ once: false, amount: 0.35 }}
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: {},
+                    visible: {
+                      transition: {
+                        staggerChildren: 0.12,
+                      },
+                    },
+                  }
+            }
+          >
             {feedbackItems.map((item, index) => (
-              <div key={item.label} className={index !== feedbackItems.length - 1 ? 'border-b border-stone-300 pb-4' : ''}>
+              <motion.div
+                key={item.label}
+                variants={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        hidden: { opacity: 0, y: 8 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.45 } },
+                      }
+                }
+                className={index !== feedbackItems.length - 1 ? 'border-b border-stone-300 pb-4' : ''}
+              >
                 <div className="mb-1.5 flex items-start justify-between gap-4">
                   <h3 className="brand-mono text-sm font-medium text-stone-700">{item.label}</h3>
                   <div className="flex items-center gap-1.5">
@@ -92,9 +122,9 @@ function HeroSection() {
                   </div>
                 </div>
                 <p className="max-w-prose text-sm leading-7 text-stone-500">{item.description}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </article>
       </div>
     </section>

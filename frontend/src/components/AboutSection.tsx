@@ -1,8 +1,11 @@
+import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from './ui/button'
 
 const creators = ['Evan Hadam', 'Jimmy Liu', 'Aiden Shay', 'Jack Stone']
 
 function AboutSection() {
+  const reduceMotion = useReducedMotion() ?? false
+
   return (
     <section id="about" className="relative overflow-hidden bg-stone-900 py-20 text-stone-100 md:py-24">
       <div className="pointer-events-none absolute -left-16 top-10 h-44 w-44 rounded-full bg-lime-300/10 blur-3xl" />
@@ -25,7 +28,13 @@ function AboutSection() {
             </p>
           </div>
 
-          <div className="rounded-sm border border-stone-700 bg-stone-800/70 p-6 backdrop-blur-sm md:p-7">
+          <motion.div
+            className="rounded-sm border border-stone-700 bg-stone-800/70 p-6 backdrop-blur-sm md:p-7"
+            initial={reduceMotion ? false : { opacity: 0 }}
+            whileInView={reduceMotion ? undefined : { opacity: 1 }}
+            viewport={{ once: false, amount: 0.35 }}
+            transition={{ duration: 0.6 }}
+          >
             <p className="brand-mono text-xs uppercase tracking-widest text-stone-400">Creators</p>
             <ul className="mt-5 space-y-3">
               {creators.map((creator) => (
@@ -47,7 +56,7 @@ function AboutSection() {
                 </a>
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

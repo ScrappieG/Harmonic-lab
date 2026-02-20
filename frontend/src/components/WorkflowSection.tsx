@@ -1,3 +1,5 @@
+import { motion, useReducedMotion } from 'framer-motion'
+
 const workflowSteps = [
   {
     step: '01',
@@ -20,6 +22,8 @@ const workflowSteps = [
 ]
 
 function WorkflowSection() {
+  const reduceMotion = useReducedMotion() ?? false
+
   return (
     <section id="how-it-works" className="bg-stone-200/70 py-20 md:py-24">
       <div className="layout-shell">
@@ -29,24 +33,101 @@ function WorkflowSection() {
           Three simple steps:
         </h2>
 
-        <div className="workflow-grid-shell mt-12">
-          <span aria-hidden className="workflow-grid-line workflow-grid-line-top" />
-          <span aria-hidden className="workflow-grid-line workflow-grid-line-bottom" />
-          <span aria-hidden className="workflow-grid-line workflow-grid-line-v0" />
-          <span aria-hidden className="workflow-grid-line workflow-grid-line-v1" />
-          <span aria-hidden className="workflow-grid-line workflow-grid-line-v2" />
-          <span aria-hidden className="workflow-grid-line workflow-grid-line-v3" />
+        <motion.div
+          className="workflow-grid-shell mt-12"
+          initial={reduceMotion ? false : 'hidden'}
+          whileInView={reduceMotion ? undefined : 'visible'}
+          viewport={{ once: false, amount: 0.45 }}
+        >
+          <motion.span
+            aria-hidden
+            className="workflow-grid-line workflow-grid-line-top"
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: { scaleX: 0, opacity: 0.5 },
+                    visible: { scaleX: 1, opacity: 1, transition: { duration: 1.2 } },
+                  }
+            }
+            style={{ transformOrigin: 'left center' }}
+          />
+          <motion.span
+            aria-hidden
+            className="workflow-grid-line workflow-grid-line-bottom"
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: { scaleX: 0, opacity: 0.5 },
+                    visible: { scaleX: 1, opacity: 1, transition: { duration: 1.2, delay: 0.12 } },
+                  }
+            }
+            style={{ transformOrigin: 'left center' }}
+          />
+          <motion.span
+            aria-hidden
+            className="workflow-grid-line workflow-grid-line-v0"
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: { scaleY: 0, opacity: 0.5 },
+                    visible: { scaleY: 1, opacity: 1, transition: { duration: 0.9, delay: 0.24 } },
+                  }
+            }
+            style={{ transformOrigin: 'center top' }}
+          />
+          <motion.span
+            aria-hidden
+            className="workflow-grid-line workflow-grid-line-v1"
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: { scaleY: 0, opacity: 0.5 },
+                    visible: { scaleY: 1, opacity: 1, transition: { duration: 0.9, delay: 0.32 } },
+                  }
+            }
+            style={{ transformOrigin: 'center top' }}
+          />
+          <motion.span
+            aria-hidden
+            className="workflow-grid-line workflow-grid-line-v2"
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: { scaleY: 0, opacity: 0.5 },
+                    visible: { scaleY: 1, opacity: 1, transition: { duration: 0.9, delay: 0.4 } },
+                  }
+            }
+            style={{ transformOrigin: 'center top' }}
+          />
+          <motion.span
+            aria-hidden
+            className="workflow-grid-line workflow-grid-line-v3"
+            variants={
+              reduceMotion
+                ? undefined
+                : {
+                    hidden: { scaleY: 0, opacity: 0.5 },
+                    visible: { scaleY: 1, opacity: 1, transition: { duration: 0.9, delay: 0.48 } },
+                  }
+            }
+            style={{ transformOrigin: 'center top' }}
+          />
 
           <div className="workflow-grid">
             {workflowSteps.map((item) => (
               <article key={item.step} className="workflow-grid-cell">
-                <p className="brand-mono text-sm font-semibold text-stone-500">{item.step}</p>
-              <h3 className="brand-serif mt-4 text-2xl leading-tight text-stone-800">{item.title}</h3>
-              <p className="mt-3 text-base leading-relaxed text-stone-500">{item.description}</p>
+                <p className="brand-mono text-sm font-semibold text-lime-800/60">{item.step}</p>
+                <h3 className="brand-serif mt-4 text-2xl leading-tight text-stone-800">{item.title}</h3>
+                <p className="mt-3 text-base leading-relaxed text-stone-500">{item.description}</p>
               </article>
             ))}
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   )
