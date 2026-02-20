@@ -1,34 +1,39 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
+from workers import WorkerEntrypoint
+import asgi
 import json
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "https://articuleet.com",
+        "https://www.articuleet.com",
+        "http://localhost:5173"
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-client = OpenAI()
 
 @app.get("/")
 def root():
     return {"message": "ArticuLeet API"}
 
-#testing using an actual audio file for transcribing
 @app.post("/transcribe")
-async def transcribe(audio: UploadFile):
+async def transcribe(audio: UploadFile, request: Request):
+    env = request.scope["env"]
+    client = OpenAI(api_key=env.OPENAI_API_KEY)
+
     transcript = client.audio.transcriptions.create(
         model="whisper-1",
         file=(audio.filename, audio.file, audio.content_type),
     )
+
     return {"text": transcript.text}
 
 class AnalyzeRequest(BaseModel):
@@ -36,47 +41,21 @@ class AnalyzeRequest(BaseModel):
     problem: str
     code: str = ""
 
-#testing using gpt-4o | will swap eventually
+#analyze audio transcript (this will be expanded on later)
 @app.post("/analyze")
-async def analyze(request: AnalyzeRequest):
+async def analyze(data: AnalyzeRequest, request: Request):
+    env = request.scope["env"]
+    client = OpenAI(api_key=env.OPENAI_API_KEY)
+
     response = client.chat.completions.create(
         model="gpt-4o",
         response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": """You are an expert technical interview coach. Analyze the following interview transcript and return a JSON object with this exact structure:
-                {
-                    "filler_words": {
-                        "count": <number>,
-                        "examples": ["um", "uh", "like", "so", "actually"]
-                    },
-                    "clarifying_questions": {
-                        "score": "poor" | "fair" | "good",
-                        "feedback": "<specific feedback>"
-                    },
-                    "thought_process": {
-                        "score": "poor" | "fair" | "good",
-                        "feedback": "<specific feedback>"
-                    },
-                    "complexity_analysis": {
-                        "score": "none" | "partial" | "complete",
-                        "feedback": "<specific feedback>"
-                    },
-                    "overall": "<2-3 sentence summary with advice>"
-                }
-
-                Evaluate based on:
-                - Filler words: count occurrences of um, uh, like, you know, so, basically, actually
-                - Clarifying questions: did they ask about constraints, edge cases, input format before solving?
-                - Thought process: did they explain their approach clearly, walk through examples, consider alternatives?
-                - Complexity analysis: did they discuss time and space complexity?
-                Be constructive and specific in your feedback."""
-            },
-            {
-                "role": "user",
-                "content": f"Problem: {request.problem}\n\nCandidate's code:\n{request.code}\n\nInterview transcript:\n{request.transcript}"
-            }
-        ]
+        messages=[ ... ]
     )
+
     return json.loads(response.choices[0].message.content)
+
+# cloudflare worker entrypoint
+class Default(WorkerEntrypoint):
+    async def fetch(self, request):
+        return await asgi.fetch(app, request, self.env)

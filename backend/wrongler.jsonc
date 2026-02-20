@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "articuleet-backend",
+  "main": "backend/app.py",
+  "compatibility_date": "2026-02-20",
+  "compatibility_flags": [
+    "python_workers",
+    "python_dedicated_snapshot"
+  ],
+
+  "routes": [
+    {
+      "pattern": "api.articuleet.com/*",
+      "zone_name": "articuleet.com"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}
