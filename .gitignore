@@ -7,6 +7,6 @@ uv.lock
 .wrangler/
 .venv/
 .venv-workers/
-/backend/.wrangler/
 /backend/
 /backend/python_modules/
+!backend/.wranglerignore
