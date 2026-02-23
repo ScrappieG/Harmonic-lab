@@ -1,0 +1,9 @@
+.venv/
+.venv-workers/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+.DS_Store
+node_modules/
