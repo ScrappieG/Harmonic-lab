@@ -1,9 +1,12 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "articuleet",
   "main": "app.py",
   "compatibility_date": "2026-02-20",
-  "compatibility_flags": ["python_workers", "python_dedicated_snapshot"],
-  "observability": { "enabled": true }
-  // no routes until you add a real zone
+  "compatibility_flags": [
+    "python_workers",
+    "python_dedicated_snapshot"
+  ],
+  "observability": {
+    "enabled": true
+  }
 }
