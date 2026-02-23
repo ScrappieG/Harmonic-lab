@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, Request
+from fastapi import FastAPI, UploadFile, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
@@ -20,20 +20,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+def get_client(request: Request) -> OpenAI:
+    env = request.scope["env"]
+    api_key = getattr(env, "OPENAI_API_KEY", None)
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY missing (check wrangler secret + env)")
+    return OpenAI(api_key=api_key)
+
+#TEMP
+@app.get("/check-secret")
+async def check_secret(request: Request):
+    env = request.scope["env"]
+    return {"has_openai_key": hasattr(env, "OPENAI_API_KEY")}
+
 @app.get("/")
 def root():
     return {"message": "ArticuLeet API"}
 
 @app.post("/transcribe")
+@app.post("/transcribe")
 async def transcribe(audio: UploadFile, request: Request):
-    env = request.scope["env"]
-    client = OpenAI(api_key=env.OPENAI_API_KEY)
+    client = get_client(request)
 
+    data = await audio.read()
     transcript = client.audio.transcriptions.create(
         model="whisper-1",
-        file=(audio.filename, audio.file, audio.content_type),
+        file=(audio.filename or "audio.wav", data, audio.content_type or "application/octet-stream"),
     )
-
     return {"text": transcript.text}
 
 class AnalyzeRequest(BaseModel):
@@ -44,8 +58,7 @@ class AnalyzeRequest(BaseModel):
 #analyze audio transcript (this will be expanded on later)
 @app.post("/analyze")
 async def analyze(data: AnalyzeRequest, request: Request):
-    env = request.scope["env"]
-    client = OpenAI(api_key=env.OPENAI_API_KEY)
+    client = get_client(request)
 
     response = client.chat.completions.create(
         model="gpt-4o",
@@ -54,6 +67,10 @@ async def analyze(data: AnalyzeRequest, request: Request):
     )
 
     return json.loads(response.choices[0].message.content)
+
+@app.get("/healthz")
+async def healthz():
+    return {"ok": True}
 
 # cloudflare worker entrypoint
 class Default(WorkerEntrypoint):
