@@ -2,9 +2,9 @@
   "name": "articuleet",
   "private": true,
   "scripts": {
-    "deploy": "uv run pywrangler deploy --env=\"\"",
-    "deploy:prod": "uv run pywrangler deploy --env production",
-    "dev": "uv run pywrangler dev"
+    "deploy": "cd backend && uv run pywrangler deploy",
+    "deploy:prod": "cd backend && uv run pywrangler deploy --env production",
+    "dev": "cd backend && uv run pywrangler dev"
   },
   "devDependencies": {
     "wrangler": "^4.67.0"
