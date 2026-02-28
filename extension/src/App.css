@@ -1,0 +1,14 @@
+.popup {
+  width: 350px;
+  padding: 16px;
+}
+
+.popup h1 {
+  font-size: 18px;
+  margin: 0 0 12px 0;
+}
+
+.status {
+  color: #666;
+  font-size: 13px;
+}
