@@ -1,6 +1,6 @@
 {
   "name": "articuleet",
-  "main": "app.py",
+  "main": "src/app.py",
   "compatibility_date": "2026-02-20",
   "compatibility_flags": [
     "python_workers",
