@@ -1,6 +1,50 @@
 (function () {
   if (document.getElementById('articuleet-host')) return;
 
+  // ===== DETECT PROBLEM PAGE =====
+  var path = window.location.pathname;
+  var match = path.match(/^\/problems\/([^/]+)/);
+  if (!match) return; // Not a problem page
+
+  // ===== GET PROBLEM NAME =====
+  function slugToTitle(slug) {
+    return slug.split('-').map(function (word) {
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+  }
+
+  function getProblemName() {
+    // Try DOM first — LeetCode renders the title in various ways
+    var selectors = [
+      '[data-cy="question-title"]',
+      '.text-title-large',
+      'div[class*="title"] a',
+      'div[data-track-load="description_content"] h4',
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var el = document.querySelector(selectors[i]);
+      if (el && el.textContent.trim()) {
+        // Strip leading number + period like "1. Two Sum"
+        return el.textContent.trim().replace(/^\d+\.\s*/, '');
+      }
+    }
+    // Fallback: convert URL slug to title
+    return slugToTitle(match[1]);
+  }
+
+  // Wait briefly for LeetCode SPA to render, then grab name
+  var problemName = getProblemName();
+
+  function retryName() {
+    var name = getProblemName();
+    if (name !== slugToTitle(match[1])) {
+      problemName = name;
+      injectName();
+    }
+  }
+  setTimeout(retryName, 1500);
+  setTimeout(retryName, 3000);
+
   // ===== SETUP =====
   var fontLink = document.createElement('link');
   fontLink.rel = 'stylesheet';
@@ -34,6 +78,39 @@
   root.className = 'widget-root';
   root.innerHTML = WIDGET_HTML;
   shadow.appendChild(root);
+
+  // ===== INJECT PROBLEM NAME =====
+  function injectName() {
+    root.querySelectorAll('.problem-name').forEach(function (el) {
+      el.textContent = problemName;
+    });
+    root.querySelectorAll('.progress-line').forEach(function (el) {
+      el.innerHTML = '<strong>In Progress: ' + problemName + '</strong>';
+    });
+    root.querySelectorAll('.complete-sub').forEach(function (el) {
+      el.textContent = problemName + ' — Full Walkthrough';
+    });
+  }
+  injectName();
+
+  // ===== OBSERVE SPA NAVIGATION =====
+  var lastPath = path;
+  var observer = new MutationObserver(function () {
+    var newPath = window.location.pathname;
+    if (newPath !== lastPath) {
+      lastPath = newPath;
+      var newMatch = newPath.match(/^\/problems\/([^/]+)/);
+      if (newMatch) {
+        problemName = slugToTitle(newMatch[1]);
+        injectName();
+        setTimeout(retryName, 1500);
+        host.style.display = '';
+      } else {
+        host.style.display = 'none';
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 
   // ===== SCREENS =====
   var screens = {
@@ -303,7 +380,6 @@
   sectionKeys.forEach(function (key) {
     var screen = screens[key];
 
-    // Stop / Record toggle (red dot)
     screen.querySelector('.stop-btn').addEventListener('click', function () {
       if (sec[key].recording) {
         stopRec(key);
@@ -312,17 +388,14 @@
       }
     });
 
-    // Pause / Resume
     screen.querySelector('.pause-btn').addEventListener('click', function () {
       pauseRec(key);
     });
 
-    // Restart section
     screen.querySelector('.restart-btn').addEventListener('click', function () {
       restartRec(key);
     });
 
-    // Next section
     screen.querySelector('.next-btn').addEventListener('click', function () {
       var advance = function () {
         var i = flow.indexOf(key);
