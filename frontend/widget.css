@@ -6,13 +6,14 @@
 
 .widget-root {
   width: 340px;
-  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 14px;
-  color: #222;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, .15), 0 1px 4px rgba(0, 0, 0, .1);
+  color: #1c1917;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 12px rgba(0, 0, 0, .06);
   overflow: hidden;
+  border: 1px solid #e7e5e4;
 }
 
 /* Screens */
@@ -30,38 +31,41 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 18px 12px;
+  padding: 14px 18px 12px;
 }
 
 .header-btns {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .logo {
-  font-size: 26px;
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 22px;
   font-weight: 400;
-  letter-spacing: -.5px;
+  letter-spacing: -.3px;
+  color: #1c1917;
 }
 
 .logo b {
   font-weight: 700;
+  color: #1c1917;
 }
 
 /* Dividers */
 .divider {
   border: none;
   height: 1px;
-  background: #d5d5d5;
-  margin: 0 14px;
+  background: #e7e5e4;
+  margin: 0;
 }
 
 .divider-light {
   border: none;
   height: 1px;
-  background: #e8e8e8;
-  margin: 10px 0;
+  background: #f0eeeb;
+  margin: 12px 0;
 }
 
 /* Buttons */
@@ -69,89 +73,91 @@
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 5px;
+  border-radius: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  color: #555;
-  font-family: inherit;
+  font-size: 15px;
+  color: #a8a29e;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: background .1s, color .1s;
 }
 
 .icon-btn:hover {
-  background: #f0f0f0;
+  background: #f5f5f4;
+  color: #1c1917;
 }
 
 .expand-btn {
-  font-size: 20px;
-  color: #333;
+  font-size: 17px;
 }
 
 .close-btn {
-  font-size: 16px;
-  color: #999;
-}
-
-.close-btn:hover {
-  color: #333;
-  background: #fee;
+  font-size: 13px;
 }
 
 .help-btn {
-  width: 34px;
-  height: 34px;
-  border: 2px solid #ccc;
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid #d6d3d1;
   border-radius: 50%;
-  font-size: 16px;
-  font-weight: 700;
-  color: #777;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a8a29e;
+}
+
+.help-btn:hover {
+  border-color: #78716c;
+  color: #57534e;
 }
 
 .rec-dot {
-  color: #d32f2f;
-  font-size: 20px;
+  color: #dc2626;
+  font-size: 17px;
 }
 
 .check-icon {
-  color: #2e7d32;
-  font-size: 24px;
+  color: #4a5d23;
+  font-size: 20px;
 }
 
 .btn-primary {
   width: 100%;
-  padding: 14px 0;
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 1.2px;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .2px;
   color: #fff;
-  background: linear-gradient(135deg, #1976d2, #2196f3);
+  background: #4a5d23;
   border: none;
-  border-radius: 28px;
+  border-radius: 24px;
   cursor: pointer;
   margin-bottom: 14px;
-  font-family: inherit;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: background .15s;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 4px 14px rgba(25, 118, 210, .4);
-  transform: translateY(-1px);
+  background: #3d4e1c;
 }
 
 .btn-outline {
-  padding: 9px 20px;
-  font-size: 14px;
-  color: #444;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1c1917;
   background: #fff;
-  border: 1.5px solid #ccc;
+  border: 1px solid #d6d3d1;
   border-radius: 20px;
   cursor: pointer;
-  font-family: inherit;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: background .1s, border-color .1s;
 }
 
 .btn-outline:hover {
-  background: #f5f5f5;
-  border-color: #999;
+  background: #fafaf9;
+  border-color: #a8a29e;
 }
 
 /* Layout helpers */
@@ -170,27 +176,27 @@
 }
 
 .content {
-  padding: 14px 18px 16px;
+  padding: 16px 18px;
 }
 
 /* User footer */
 .user-footer {
   display: flex;
   align-items: center;
-  padding: 14px 18px;
-  gap: 12px;
+  padding: 12px 18px;
+  gap: 10px;
 }
 
 .avatar {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ce93d8, #f48fb1);
+  background: #292524;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 18px;
+  font-weight: 600;
+  font-size: 14px;
   color: #fff;
   flex-shrink: 0;
 }
@@ -198,69 +204,96 @@
 .user-info {
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 
 .name {
-  font-weight: 700;
-  font-size: 15px;
-  color: #111;
+  font-weight: 600;
+  font-size: 13px;
+  color: #1c1917;
 }
 
 .email {
-  font-size: 12px;
-  color: #888;
+  font-family: 'Chivo Mono', monospace;
+  font-size: 11px;
+  color: #a8a29e;
+}
+
+/* Monospace utility */
+.mono {
+  font-family: 'Chivo Mono', monospace;
 }
 
 /* Start screen */
 .session-label {
-  font-size: 18px;
-  line-height: 1.4;
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.5;
   margin-bottom: 16px;
+  color: #57534e;
+}
+
+.session-label em {
+  font-style: italic;
 }
 
 .problem-name {
-  font-size: 22px;
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 20px;
+  color: #1c1917;
 }
 
 /* Section screens */
 .progress-line {
-  font-size: 16px;
-  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 3px;
+  color: #1c1917;
 }
 
 .section-line {
-  font-size: 15px;
-  color: #333;
+  font-size: 13px;
+  color: #57534e;
+}
+
+.section-line strong {
+  font-family: 'Chivo Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: #78716c;
 }
 
 .instruction {
-  font-size: 15px;
-  line-height: 1.5;
-  color: #333;
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #44403c;
   margin: 8px 0 16px;
 }
 
-/* Dots */
+/* Progress dots */
 .dots {
   display: flex;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 5px;
+  margin-top: 10px;
 }
 
 .dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: #ddd;
+  background: #d6d3d1;
 }
 
 .dot.done {
-  background: #333;
+  background: #44403c;
 }
 
 .dot.active {
-  background: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, .25);
+  background: #1c1917;
+  box-shadow: 0 0 0 3px rgba(28, 25, 23, .1);
 }
 
 /* Controls */
@@ -268,7 +301,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
 
 .rec-group {
@@ -278,44 +311,86 @@
 }
 
 .timer {
-  font-size: 15px;
+  font-family: 'Chivo Mono', monospace;
+  font-size: 13px;
   font-weight: 600;
-  color: #d32f2f;
-  font-variant-numeric: tabular-nums;
+  color: #dc2626;
+  letter-spacing: .5px;
 }
 
 .transport {
   display: flex;
   align-items: center;
-  gap: 2px;
-  background: #ececec;
-  border-radius: 18px;
-  padding: 4px 8px;
+  gap: 1px;
+  background: #fafaf9;
+  border: 1px solid #e7e5e4;
+  border-radius: 16px;
+  padding: 3px 6px;
+}
+
+.transport .icon-btn {
+  color: #78716c;
+  font-size: 14px;
+}
+
+.transport .icon-btn:hover {
+  color: #1c1917;
 }
 
 /* Complete screen */
 .complete-title {
-  font-size: 18px;
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 17px;
   font-weight: 700;
+  color: #1c1917;
 }
 
 .complete-sub {
-  font-size: 15px;
+  font-size: 13px;
   text-align: center;
-  color: #444;
-  margin-bottom: 6px;
+  color: #78716c;
+  margin-bottom: 4px;
+}
+
+.summary-line {
+  font-size: 13px;
+  color: #1c1917;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-upper {
+  font-family: 'Chivo Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #a8a29e;
+  min-width: 70px;
+}
+
+.progress-dots {
+  color: #44403c;
+  letter-spacing: 2px;
+  font-size: 12px;
 }
 
 .feedback-heading {
-  font-size: 14px;
+  font-family: 'Chivo Mono', monospace;
+  font-size: 10px;
   text-align: center;
-  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+  color: #a8a29e;
 }
 
 .feedback {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
 }
 
 .fb-row {
@@ -323,13 +398,37 @@
   align-items: center;
   justify-content: space-between;
   font-size: 13px;
-  color: #444;
+  color: #44403c;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0eeeb;
 }
 
-.stars {
-  font-size: 18px;
-  letter-spacing: 1px;
-  color: #888;
+.fb-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* Rating dots */
+.rating-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.dot-filled {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #292524;
+  display: inline-block;
+}
+
+.dot-empty {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d6d3d1;
+  display: inline-block;
 }
 
 /* Mini bar */
@@ -341,31 +440,201 @@
 }
 
 .logo-mini {
-  font-size: 20px;
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 17px;
   font-weight: 400;
   white-space: nowrap;
   flex-shrink: 0;
+  color: #1c1917;
 }
 
 .logo-mini b {
   font-weight: 700;
+  color: #1c1917;
 }
 
 .mini-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex-shrink: 0;
 }
 
 .mini-sep {
   display: inline-block;
   width: 1px;
-  height: 18px;
-  background: #ccc;
+  height: 14px;
+  background: #d6d3d1;
   margin: 0 4px;
 }
 
 .mini-timer {
+  font-size: 12px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.widget-root {
+  width: 340px;
+  font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 14px;
+  color: #1c1917;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 1px 12px rgba(0, 0, 0, .06);
+  overflow: hidden;
+  border: 1px solid #e7e5e4;
+}
+
+/* Screens */
+.screen {
+  display: none;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+}
+
+.header-btns {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.logo {
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -.3px;
+  color: #1c1917;
+}
+
+.logo b {
+  font-weight: 700;
+  color: #1c1917;
+}
+
+/* Dividers */
+.divider {
+  border: none;
+  height: 1px;
+  background: #e7e5e4;
+  margin: 0;
+}
+
+.divider-light {
+  border: none;
+  height: 1px;
+  background: #f0eeeb;
+  margin: 12px 0;
+}
+
+/* Buttons */
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: #a8a29e;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: background .1s, color .1s;
+}
+
+.icon-btn:hover {
+  background: #f5f5f4;
+  color: #1c1917;
+}
+
+.expand-btn {
+  font-size: 17px;
+}
+
+.close-btn {
+  font-size: 13px;
+}
+
+.help-btn {
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid #d6d3d1;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a8a29e;
+}
+
+.help-btn:hover {
+  border-color: #78716c;
+  color: #57534e;
+}
+
+/* Record dot states */
+.rec-dot {
+  color: #d6d3d1;
+  font-size: 17px;
+  transition: color .15s;
+}
+
+.rec-dot.is-active {
+  color: #dc2626;
+  animation: pulse-rec 1.5s ease-in-out infinite;
+}
+
+.section-times-heading {
+  font-family: 'Chivo Mono', monospace;
+  font-size: 10px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 10px;
+  color: #a8a29e;
+}
+
+.section-times {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section-time-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #44403c;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0eeeb;
+}
+
+.section-time-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.section-time-row .recorded {
+  color: #1c1917;
+  font-weight: 600;
+}
+
+.section-time-row .skipped {
+  color: #a8a29e;
+  font-style: italic;
 }

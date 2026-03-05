@@ -1,4 +1,3 @@
-// Separated for readability — just a string export
 const WIDGET_HTML = `
 
 <!-- START -->
@@ -13,7 +12,7 @@ const WIDGET_HTML = `
   <hr class="divider">
   <section class="content">
     <p class="session-label"><em>Start Session for:</em><br><strong class="problem-name">Two Sum</strong></p>
-    <button class="btn-primary" id="btn-start-recording">START RECORDING ▶</button>
+    <button class="btn-primary" id="btn-start-recording">Start Recording →</button>
     <div class="row-center gap-12">
       <button class="btn-outline">View Dashboard</button>
       <button class="icon-btn help-btn">?</button>
@@ -27,7 +26,7 @@ const WIDGET_HTML = `
 </div>
 
 <!-- SECTION 1 -->
-<div id="screen-section-1" class="screen">
+<div id="screen-section-1" class="screen" data-section="sec1">
   <header class="header">
     <h1 class="logo">articu<b>L</b>eet</h1>
     <div class="header-btns">
@@ -37,7 +36,7 @@ const WIDGET_HTML = `
   </header>
   <hr class="divider">
   <section class="content">
-    <p class="progress-line"><strong>In Progress: Two Sum</strong></p>
+    <p class="progress-line">In Progress: Two Sum</p>
     <p class="section-line"><strong>Section 1:</strong> Problem Clarification &amp; Questions</p>
     <div class="dots">
       <span class="dot active"></span>
@@ -47,10 +46,17 @@ const WIDGET_HTML = `
       <span class="dot"></span>
     </div>
     <hr class="divider-light">
-    <p class="instruction"><strong>Verbalize:</strong> Clarify inputs/outputs, edge cases, constraints. Ask questions aloud.</p>
+    <p class="instruction">Clarify inputs/outputs, edge cases, constraints. Ask questions aloud.</p>
     <div class="controls">
-      <div class="rec-group"><button class="icon-btn rec-dot">⏺</button><span class="timer">02:24</span></div>
-      <div class="transport"><button class="icon-btn">⏸</button><button class="icon-btn">↻</button><button class="icon-btn btn-next">⏭</button></div>
+      <div class="rec-group">
+        <button class="icon-btn rec-dot stop-btn">⏺</button>
+        <span class="timer section-timer">00:00</span>
+      </div>
+      <div class="transport">
+        <button class="icon-btn pause-btn">⏸</button>
+        <button class="icon-btn restart-btn">↻</button>
+        <button class="icon-btn next-btn">⏭</button>
+      </div>
       <button class="icon-btn help-btn">?</button>
     </div>
   </section>
@@ -62,7 +68,7 @@ const WIDGET_HTML = `
 </div>
 
 <!-- SECTION 2 -->
-<div id="screen-section-2" class="screen">
+<div id="screen-section-2" class="screen" data-section="sec2">
   <header class="header">
     <h1 class="logo">articu<b>L</b>eet</h1>
     <div class="header-btns">
@@ -72,7 +78,7 @@ const WIDGET_HTML = `
   </header>
   <hr class="divider">
   <section class="content">
-    <p class="progress-line"><strong>In Progress: Two Sum</strong></p>
+    <p class="progress-line">In Progress: Two Sum</p>
     <p class="section-line"><strong>Section 2:</strong> High Level Approach</p>
     <div class="dots">
       <span class="dot done"></span>
@@ -82,10 +88,17 @@ const WIDGET_HTML = `
       <span class="dot"></span>
     </div>
     <hr class="divider-light">
-    <p class="instruction"><strong>Verbalize:</strong> Describe your approach at a high level. What data structures or patterns will you use?</p>
+    <p class="instruction">Describe your approach at a high level. What data structures or patterns will you use?</p>
     <div class="controls">
-      <div class="rec-group"><button class="icon-btn rec-dot">⏺</button><span class="timer">05:47</span></div>
-      <div class="transport"><button class="icon-btn">⏸</button><button class="icon-btn">↻</button><button class="icon-btn btn-next">⏭</button></div>
+      <div class="rec-group">
+        <button class="icon-btn rec-dot stop-btn">⏺</button>
+        <span class="timer section-timer">00:00</span>
+      </div>
+      <div class="transport">
+        <button class="icon-btn pause-btn">⏸</button>
+        <button class="icon-btn restart-btn">↻</button>
+        <button class="icon-btn next-btn">⏭</button>
+      </div>
       <button class="icon-btn help-btn">?</button>
     </div>
   </section>
@@ -97,7 +110,7 @@ const WIDGET_HTML = `
 </div>
 
 <!-- SECTION 3 -->
-<div id="screen-section-3" class="screen">
+<div id="screen-section-3" class="screen" data-section="sec3">
   <header class="header">
     <h1 class="logo">articu<b>L</b>eet</h1>
     <div class="header-btns">
@@ -107,7 +120,7 @@ const WIDGET_HTML = `
   </header>
   <hr class="divider">
   <section class="content">
-    <p class="progress-line"><strong>In Progress: Two Sum</strong></p>
+    <p class="progress-line">In Progress: Two Sum</p>
     <p class="section-line"><strong>Section 3:</strong> Implementation</p>
     <div class="dots">
       <span class="dot done"></span>
@@ -117,10 +130,17 @@ const WIDGET_HTML = `
       <span class="dot"></span>
     </div>
     <hr class="divider-light">
-    <p class="instruction"><strong>Verbalize:</strong> Talk through your code as you write it. Explain each decision and logic step aloud.</p>
+    <p class="instruction">Talk through your code as you write it. Explain each decision and logic step aloud.</p>
     <div class="controls">
-      <div class="rec-group"><button class="icon-btn rec-dot">⏺</button><span class="timer">10:12</span></div>
-      <div class="transport"><button class="icon-btn">⏸</button><button class="icon-btn">↻</button><button class="icon-btn btn-next">⏭</button></div>
+      <div class="rec-group">
+        <button class="icon-btn rec-dot stop-btn">⏺</button>
+        <span class="timer section-timer">00:00</span>
+      </div>
+      <div class="transport">
+        <button class="icon-btn pause-btn">⏸</button>
+        <button class="icon-btn restart-btn">↻</button>
+        <button class="icon-btn next-btn">⏭</button>
+      </div>
       <button class="icon-btn help-btn">?</button>
     </div>
   </section>
@@ -132,7 +152,7 @@ const WIDGET_HTML = `
 </div>
 
 <!-- SECTION 4 -->
-<div id="screen-section-4" class="screen">
+<div id="screen-section-4" class="screen" data-section="sec4">
   <header class="header">
     <h1 class="logo">articu<b>L</b>eet</h1>
     <div class="header-btns">
@@ -142,7 +162,7 @@ const WIDGET_HTML = `
   </header>
   <hr class="divider">
   <section class="content">
-    <p class="progress-line"><strong>In Progress: Two Sum</strong></p>
+    <p class="progress-line">In Progress: Two Sum</p>
     <p class="section-line"><strong>Section 4:</strong> Testing &amp; Edge Cases</p>
     <div class="dots">
       <span class="dot done"></span>
@@ -152,10 +172,17 @@ const WIDGET_HTML = `
       <span class="dot"></span>
     </div>
     <hr class="divider-light">
-    <p class="instruction"><strong>Verbalize:</strong> Walk through test cases. Trace your code with examples. Consider edge cases.</p>
+    <p class="instruction">Walk through test cases. Trace your code with examples. Consider edge cases.</p>
     <div class="controls">
-      <div class="rec-group"><button class="icon-btn rec-dot">⏺</button><span class="timer">13:05</span></div>
-      <div class="transport"><button class="icon-btn">⏸</button><button class="icon-btn">↻</button><button class="icon-btn btn-next">⏭</button></div>
+      <div class="rec-group">
+        <button class="icon-btn rec-dot stop-btn">⏺</button>
+        <span class="timer section-timer">00:00</span>
+      </div>
+      <div class="transport">
+        <button class="icon-btn pause-btn">⏸</button>
+        <button class="icon-btn restart-btn">↻</button>
+        <button class="icon-btn next-btn">⏭</button>
+      </div>
       <button class="icon-btn help-btn">?</button>
     </div>
   </section>
@@ -167,7 +194,7 @@ const WIDGET_HTML = `
 </div>
 
 <!-- SECTION 5 -->
-<div id="screen-section-5" class="screen">
+<div id="screen-section-5" class="screen" data-section="sec5">
   <header class="header">
     <h1 class="logo">articu<b>L</b>eet</h1>
     <div class="header-btns">
@@ -177,7 +204,7 @@ const WIDGET_HTML = `
   </header>
   <hr class="divider">
   <section class="content">
-    <p class="progress-line"><strong>In Progress: Two Sum</strong></p>
+    <p class="progress-line">In Progress: Two Sum</p>
     <p class="section-line"><strong>Section 5:</strong> Complexity &amp; Tradeoffs</p>
     <div class="dots">
       <span class="dot done"></span>
@@ -187,10 +214,17 @@ const WIDGET_HTML = `
       <span class="dot active"></span>
     </div>
     <hr class="divider-light">
-    <p class="instruction"><strong>Verbalize:</strong> Time O(?), Space O(?). Why? Brute force vs. optimal. Discuss tradeoffs.</p>
+    <p class="instruction">Time O(?), Space O(?). Why? Brute force vs. optimal. Discuss tradeoffs.</p>
     <div class="controls">
-      <div class="rec-group"><button class="icon-btn rec-dot" id="btn-stop">⏺</button><span class="timer">15:35</span></div>
-      <div class="transport"><button class="icon-btn">⏸</button><button class="icon-btn">↻</button><button class="icon-btn btn-next">⏭</button></div>
+      <div class="rec-group">
+        <button class="icon-btn rec-dot stop-btn">⏺</button>
+        <span class="timer section-timer">00:00</span>
+      </div>
+      <div class="transport">
+        <button class="icon-btn pause-btn">⏸</button>
+        <button class="icon-btn restart-btn">↻</button>
+        <button class="icon-btn next-btn">⏭</button>
+      </div>
       <button class="icon-btn help-btn">?</button>
     </div>
   </section>
@@ -213,19 +247,23 @@ const WIDGET_HTML = `
   <hr class="divider">
   <section class="content">
     <div class="row-center gap-8"><span class="complete-title">Session Complete!</span><span class="check-icon">☑</span></div>
-    <p class="complete-sub">Two Sum - Full Walkthrough</p>
+    <p class="complete-sub">Two Sum — Full Walkthrough</p>
     <hr class="divider-light">
-    <p><strong>Progress:</strong> ●●●●● (All Sections)</p>
-    <p style="margin-bottom:10px"><strong>Time:</strong> 30:14</p>
-    <p class="feedback-heading"><strong>Quick Feedback:</strong></p>
+    <p class="summary-line"><span class="label-upper">Progress</span> <span class="progress-indicator">○ ○ ○ ○ ○</span> <span class="sections-text">0/5 Sections</span></p>
+    <p class="summary-line"><span class="label-upper">Time</span> <span class="mono total-time">00:00</span></p>
+    <hr class="divider-light">
+    <p class="section-times-heading">Section Times</p>
+    <div class="section-times"></div>
+    <hr class="divider-light">
+    <p class="feedback-heading">Quick Feedback</p>
     <div class="feedback">
-      <div class="fb-row"><span>Problem Clarification:</span><span class="stars">★★★☆☆</span></div>
-      <div class="fb-row"><span>High Level Approach:</span><span class="stars">★★★★☆</span></div>
-      <div class="fb-row"><span>Implementation:</span><span class="stars">★★☆☆☆</span></div>
-      <div class="fb-row"><span>Testing &amp; Edge Cases:</span><span class="stars">★★★✦☆</span></div>
-      <div class="fb-row"><span>Complexity &amp; Tradeoffs:</span><span class="stars">★★★★★</span></div>
+      <div class="fb-row"><span>Problem Clarification</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-empty"></span></span></div>
+      <div class="fb-row"><span>High Level Approach</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span></span></div>
+      <div class="fb-row"><span>Implementation</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-empty"></span><span class="dot-empty"></span></span></div>
+      <div class="fb-row"><span>Testing &amp; Edge Cases</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-empty"></span></span></div>
+      <div class="fb-row"><span>Complexity &amp; Tradeoffs</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span></span></div>
     </div>
-    <div class="row-center gap-12" style="margin-top:14px">
+    <div class="row-center gap-12" style="margin-top:16px">
       <button class="btn-outline">View Full Analysis</button>
       <button class="btn-outline" id="btn-new-session">New Session</button>
     </div>
@@ -242,12 +280,12 @@ const WIDGET_HTML = `
   <div class="mini-bar">
     <span class="logo-mini">articu<b>L</b>eet</span>
     <div class="mini-controls">
-      <button class="icon-btn rec-dot">⏺</button>
-      <span class="timer mini-timer">13:33</span>
+      <button class="icon-btn rec-dot stop-btn">⏺</button>
+      <span class="timer mini-timer">00:00</span>
       <span class="mini-sep"></span>
-      <button class="icon-btn">⏸</button>
-      <button class="icon-btn">↻</button>
-      <button class="icon-btn">⏭</button>
+      <button class="icon-btn pause-btn">⏸</button>
+      <button class="icon-btn restart-btn">↻</button>
+      <button class="icon-btn next-btn">⏭</button>
     </div>
     <button class="icon-btn" id="btn-expand-mini">▼</button>
     <button class="icon-btn close-btn">✕</button>
