@@ -1,20 +1,7 @@
 import type { KeyboardEvent } from 'react'
 
 import { cn } from '@/lib/utils'
-
-export type SessionListItem = {
-  id: string
-  problemName: string
-  createdAt: string
-  totalTimeMinutes: number | null
-  scoreOverall: number | null
-  problemUrl?: string | null
-}
-
-export type SessionRowProps = {
-  item: SessionListItem
-  isLast?: boolean
-}
+import type { SessionRowProps } from './types'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',

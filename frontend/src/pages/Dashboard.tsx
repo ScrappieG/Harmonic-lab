@@ -1,20 +1,9 @@
 import { Link } from 'react-router-dom'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
-import SessionList, { type SessionListItem } from '@/components/dashboard/SessionList'
+import SessionList from '@/components/dashboard/SessionList'
+import type { DashboardStats, SessionListItem, SessionTrendPoint } from '@/components/dashboard/types'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
-
-type DashboardStats = {
-  sessions: number
-  avgScore: number
-  maxScore: number
-  totalMinutes: number
-}
-
-type SessionTrendPoint = {
-  date: string
-  score: number
-}
 
 const stats: DashboardStats = {
   sessions: 7,

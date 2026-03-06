@@ -1,11 +1,7 @@
 import { cn } from '@/lib/utils'
 
-import SessionRow, { type SessionListItem } from './SessionRow'
-
-export type SessionListProps = {
-  items: SessionListItem[]
-  className?: string
-}
+import SessionRow from './SessionRow'
+import type { SessionListProps } from './types'
 
 function SessionList({ items, className }: SessionListProps) {
   return (
@@ -18,4 +14,3 @@ function SessionList({ items, className }: SessionListProps) {
 }
 
 export default SessionList
-export type { SessionListItem }
