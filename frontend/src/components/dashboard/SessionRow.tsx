@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import { cn } from '@/lib/utils'
 import type { SessionRowProps } from './types'
@@ -35,26 +35,19 @@ function getDotClass(scoreOverall: number | null, dotIndex: number) {
 }
 
 function SessionRow({ item, isLast = false }: SessionRowProps) {
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-    }
-  }
+  const problemName = item.problemName ?? 'Untitled session'
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => {}}
-      onKeyDown={handleKeyDown}
+    <Link
+      to={`/dashboard/${item.id}`}
       className={cn(
         'group flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-stone-200/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-lime-900/40 sm:px-5 sm:py-4',
         !isLast && 'border-b border-stone-300/90'
       )}
-      aria-label={`Session ${item.problemName}`}
+      aria-label={`Session ${problemName}`}
     >
       <div className="min-w-0">
-        <p className="truncate text-base leading-tight text-stone-800 sm:text-lg">{item.problemName}</p>
+        <p className="truncate text-base leading-tight text-stone-800 sm:text-lg">{problemName}</p>
         <p className="mt-1 text-sm text-stone-500 sm:text-base">
           {formatDateLabel(item.createdAt)} <span aria-hidden>·</span> {formatTimeLabel(item.totalTimeMinutes)}
         </p>
@@ -71,7 +64,7 @@ function SessionRow({ item, isLast = false }: SessionRowProps) {
         </div>
         <p className="w-8 text-right text-lg leading-none text-stone-500">{formatScoreLabel(item.scoreOverall)}</p>
       </div>
-    </div>
+    </Link>
   )
 }
 

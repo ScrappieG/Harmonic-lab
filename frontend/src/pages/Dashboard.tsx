@@ -1,83 +1,9 @@
 import { Link } from 'react-router-dom'
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
+import { dashboardStats as stats, sessionListItems, sessionTrend } from '@/components/dashboard/mockData'
 import SessionList from '@/components/dashboard/SessionList'
-import type { DashboardStats, SessionListItem, SessionTrendPoint } from '@/components/dashboard/types'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
-
-const stats: DashboardStats = {
-  sessions: 7,
-  avgScore: 3.0,
-  maxScore: 4,
-  totalMinutes: 158,
-}
-
-const sessionTrend: SessionTrendPoint[] = [
-  { date: 'Feb 4', score: 3.3 },
-  { date: 'Feb 7', score: 2.3 },
-  { date: 'Feb 9', score: 3.1 },
-  { date: 'Feb 11', score: 2.6 },
-  { date: 'Feb 13', score: 2.9 },
-]
-
-const sessionListItems: SessionListItem[] = [
-  {
-    id: 'session-01',
-    problemName: 'Design a URL Shortener',
-    createdAt: '2026-02-13T10:12:00.000Z',
-    totalTimeMinutes: 22,
-    scoreOverall: 3.1,
-    problemUrl: null,
-  },
-  {
-    id: 'session-02',
-    problemName: 'Rate Limiter Architecture',
-    createdAt: '2026-02-11T09:40:00.000Z',
-    totalTimeMinutes: 18,
-    scoreOverall: 2.6,
-    problemUrl: null,
-  },
-  {
-    id: 'session-03',
-    problemName: 'Message Queue Tradeoffs',
-    createdAt: '2026-02-09T15:05:00.000Z',
-    totalTimeMinutes: 25,
-    scoreOverall: 3.3,
-    problemUrl: null,
-  },
-  {
-    id: 'session-04',
-    problemName: 'Database Indexing Strategy',
-    createdAt: '2026-02-07T13:00:00.000Z',
-    totalTimeMinutes: 15,
-    scoreOverall: 2.3,
-    problemUrl: null,
-  },
-  {
-    id: 'session-05',
-    problemName: 'Load Balancer Design',
-    createdAt: '2026-02-04T11:10:00.000Z',
-    totalTimeMinutes: 30,
-    scoreOverall: 3.5,
-    problemUrl: null,
-  },
-  {
-    id: 'session-06',
-    problemName: 'Caching Layer Design',
-    createdAt: '2026-02-02T16:22:00.000Z',
-    totalTimeMinutes: 20,
-    scoreOverall: 2.8,
-    problemUrl: null,
-  },
-  {
-    id: 'session-07',
-    problemName: 'API Gateway Patterns',
-    createdAt: '2026-01-31T17:30:00.000Z',
-    totalTimeMinutes: 28,
-    scoreOverall: 3.2,
-    problemUrl: null,
-  },
-]
 
 const chartConfig = {
   score: {
@@ -90,8 +16,13 @@ const dashboardShellClass = 'mx-auto w-full max-w-5xl px-6 lg:px-8'
 
 function Dashboard() {
   return (
-    <div className="min-h-screen bg-stone-100">
-      <header className="border-b border-stone-200/90 bg-stone-100/95 backdrop-blur-sm">
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-stone-100 via-stone-100 to-stone-200/45">
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute -top-16 left-1/2 h-56 w-[46rem] -translate-x-1/2 rounded-full bg-stone-50/70 blur-3xl" />
+        <div className="absolute right-0 top-40 h-64 w-64 rounded-full bg-stone-200/55 blur-3xl" />
+      </div>
+
+      <header className="relative z-10 border-b border-stone-200/90 bg-stone-100/88 backdrop-blur-sm">
         <nav className={`${dashboardShellClass} flex items-center py-2.5`}>
           <Link to="/" className="text-lg leading-none tracking-tight text-stone-900">
             <span className="brand-serif">articu</span>
@@ -107,7 +38,7 @@ function Dashboard() {
         </nav>
       </header>
 
-      <main className={`${dashboardShellClass} py-7 md:py-9`}>
+      <main className={`${dashboardShellClass} relative z-10 py-7 md:py-9`}>
         <section className="w-full">
           <h1 className="brand-serif text-xl leading-none tracking-tight text-stone-900 sm:text-2xl md:text-3xl">
             Your Sessions
@@ -135,7 +66,7 @@ function Dashboard() {
             </div>
           </div>
 
-          <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/70 px-4 pb-4 pt-5 sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
+          <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
             <p className="brand-serif text-lg leading-none text-stone-600 md:text-xl">Last 5 sessions</p>
 
             <div className="mt-4 h-44 w-full md:h-48">
