@@ -1,0 +1,5 @@
+*
+!src/app.py
+!wrangler.jsonc
+!pyproject.toml
+!python_modules/**
