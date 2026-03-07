@@ -1,4 +1,5 @@
 import httpx
+from fastapi import HTTPException
 
 
 class SupabaseClient:
@@ -50,6 +51,30 @@ class SupabaseClient:
         response.raise_for_status()
         return response.json()
 
+    async def auth_get_user(self, access_token: str) -> dict:
+        """Validate a JWT and return the user. Raises HTTPException if invalid."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{self.url}/auth/v1/user",
+                headers={**self.headers, "Authorization": f"Bearer {access_token}"},
+            )
+        if response.status_code == 401:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+        response.raise_for_status()
+        return response.json()
+
+    async def upsert(self, table: str, data: dict | list, on_conflict: str) -> list:
+        """UPSERT rows, merging on the given conflict column(s)."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self._rest_url(table),
+                headers={**self.headers, "Prefer": "return=representation,resolution=merge-duplicates"},
+                params={"on_conflict": on_conflict},
+                json=data,
+            )
+        response.raise_for_status()
+        return response.json()
+
     async def delete(self, table: str, filters: dict) -> list:
         """DELETE rows matching filters. filters = {"column": "eq.value", ...}"""
         async with httpx.AsyncClient() as client:
@@ -68,6 +93,5 @@ def get_supabase(request) -> SupabaseClient:
     url = getattr(env, "SUPABASE_PUB_URL", None)
     key = getattr(env, "SUPABASE_PUB_KEY", None)
     if not url or not key:
-        from fastapi import HTTPException
         raise HTTPException(status_code=500, detail="SUPABASE_URL or SUPABASE_KEY missing")
     return SupabaseClient(url, key)
