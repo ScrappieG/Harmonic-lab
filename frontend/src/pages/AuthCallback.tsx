@@ -9,7 +9,8 @@ function AuthCallback() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data }) => {
+      const session = data.session
       if (session?.access_token && EXTENSION_ID && typeof chrome !== 'undefined') {
         chrome.runtime.sendMessage(EXTENSION_ID, { access_token: session.access_token })
       }
