@@ -4,6 +4,11 @@
   "version": "1.0.0",
   "description": "Practice articulating your LeetCode solutions aloud.",
   "action": {},
+  "permissions": ["storage"],
+  "host_permissions": ["https://articuleet.workers.dev/*"],
+  "externally_connectable": {
+    "matches": ["https://articuleet.com/*", "https://www.articuleet.com/*"]
+  },
   "background": {
     "service_worker": "background.js"
   },

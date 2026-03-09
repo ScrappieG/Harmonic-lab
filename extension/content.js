@@ -134,9 +134,44 @@
     sec5: 'Complexity & Tradeoffs',
   };
 
+  var BACKEND_URL = 'https://articuleet.workers.dev';
+
   var lastScreen = 'start';
   var currentSection = null;
   var micStream = null;
+  var sessionId = null;
+
+  // ===== AUTH =====
+  function getAuthToken() {
+    return new Promise(function (resolve) {
+      chrome.storage.local.get('access_token', function (result) {
+        resolve(result.access_token || null);
+      });
+    });
+  }
+
+  async function apiFetch(path, options) {
+    var token = await getAuthToken();
+    var headers = Object.assign({ 'Authorization': 'Bearer ' + token }, options.headers || {});
+    var res = await fetch(BACKEND_URL + path, Object.assign({}, options, { headers: headers }));
+    if (!res.ok) throw new Error('API error ' + res.status + ': ' + await res.text());
+    return res.json();
+  }
+
+  // ===== GET CODE FROM LEETCODE EDITOR =====
+  function getCode() {
+    if (window.monaco) {
+      var models = window.monaco.editor.getModels();
+      if (models.length > 0) return models[0].getValue();
+    }
+    return '';
+  }
+
+  // ===== GET PROBLEM STATEMENT FROM PAGE =====
+  function getProblemStatement() {
+    var el = document.querySelector('[data-track-load="description_content"]');
+    return el ? el.innerText.trim() : '';
+  }
 
   // ===== PER-SECTION STATE =====
   var sec = {};
@@ -460,14 +495,103 @@
   });
 
   // ===== NAV BUTTONS =====
-  root.querySelector('#btn-start-recording').addEventListener('click', function () {
+  root.querySelector('#btn-start-recording').addEventListener('click', async function () {
+    try {
+      var session = await apiFetch('/sessions/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problem_name: problemName, problem_url: window.location.href }),
+      });
+      sessionId = session.id;
+    } catch (e) {
+      console.warn('[articuLeet] Could not create session:', e);
+    }
     show('sec1');
     startRec('sec1');
   });
 
   root.querySelector('#btn-new-session').addEventListener('click', function () {
     resetAll();
+    sessionId = null;
     show('start');
+  });
+
+  // ===== TRANSCRIBE & ANALYZE =====
+  root.querySelector('#btn-view-analysis').addEventListener('click', async function () {
+    if (!sessionId) {
+      console.warn('[articuLeet] No session ID — was start recording called?');
+      return;
+    }
+
+    var btn = root.querySelector('#btn-view-analysis');
+    btn.textContent = 'Analyzing…';
+    btn.disabled = true;
+
+    try {
+      // 1. Transcribe each recorded section sequentially
+      var transcriptParts = [];
+      for (var i = 0; i < sectionKeys.length; i++) {
+        var key = sectionKeys[i];
+        if (!sec[key].blob) continue;
+        var formData = new FormData();
+        formData.append('audio', sec[key].blob, key + '.webm');
+        var token = await getAuthToken();
+        var res = await fetch(BACKEND_URL + '/transcribe', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+          body: formData,
+        });
+        if (!res.ok) throw new Error('Transcribe failed for ' + key);
+        var data = await res.json();
+        if (data.text) {
+          transcriptParts.push('[' + sectionNames[key] + ']: ' + data.text);
+        }
+      }
+
+      var fullTranscript = transcriptParts.join('\n\n');
+      var code = getCode();
+      var problemStatement = getProblemStatement();
+
+      // 2. Analyze
+      var analysis = await apiFetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: fullTranscript, problem: problemName, code: code }),
+      });
+
+      // 3. Save everything to DB in parallel
+      var totalSeconds = sectionKeys.reduce(function (sum, k) { return sum + sec[k].seconds; }, 0);
+      await Promise.all([
+        apiFetch('/sessions/details', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_id: sessionId,
+            transcript: fullTranscript,
+            code: code,
+            problem_statement: problemStatement,
+          }),
+        }),
+        apiFetch('/sessions/score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(Object.assign({ session_id: sessionId }, analysis)),
+        }),
+        apiFetch('/sessions/finish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, total_time: totalSeconds }),
+        }),
+      ]);
+
+      btn.textContent = 'View Full Analysis';
+      btn.disabled = false;
+      // TODO: open dashboard/results page
+    } catch (e) {
+      console.error('[articuLeet] Analysis failed:', e);
+      btn.textContent = 'Try Again';
+      btn.disabled = false;
+    }
   });
 
   root.querySelector('#btn-expand-mini').addEventListener('click', function () {

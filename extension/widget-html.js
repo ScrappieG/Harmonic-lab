@@ -264,7 +264,7 @@ const WIDGET_HTML = `
       <div class="fb-row"><span>Complexity &amp; Tradeoffs</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span></span></div>
     </div>
     <div class="row-center gap-12" style="margin-top:16px">
-      <button class="btn-outline">View Full Analysis</button>
+      <button class="btn-outline" id="btn-view-analysis">View Full Analysis</button>
       <button class="btn-outline" id="btn-new-session">New Session</button>
     </div>
   </section>
