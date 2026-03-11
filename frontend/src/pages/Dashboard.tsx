@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
 
 import SessionList from '@/components/dashboard/SessionList'
 import type { DashboardStats, SessionListItem, SessionTrendPoint } from '@/components/dashboard/types'
@@ -180,6 +180,17 @@ function Dashboard() {
                             <stop offset="100%" stopColor="var(--color-score)" stopOpacity={0.03} />
                           </linearGradient>
                         </defs>
+                        {trend.length === 1 ? (
+                          <>
+                            <ReferenceArea y1={0} y2={trend[0].score} fill="url(#scoreFill)" fillOpacity={1} />
+                            <ReferenceLine
+                              y={trend[0].score}
+                              stroke="var(--color-score)"
+                              strokeOpacity={0.55}
+                              strokeWidth={1.8}
+                            />
+                          </>
+                        ) : null}
                         <CartesianGrid vertical={false} stroke="rgb(214 211 209)" strokeDasharray="4 4" />
                         <XAxis
                           dataKey="date"
