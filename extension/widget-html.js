@@ -12,7 +12,7 @@ const WIDGET_HTML = `
   <hr class="divider">
   <section class="content">
     <p class="session-label"><em>Start Session for:</em><br><strong class="problem-name">Two Sum</strong></p>
-    <button class="btn-primary" id="btn-start-recording">Start Recording →</button>
+    <button class="btn-primary" id="btn-start-recording">Begin →</button>
     <div class="row-center gap-12">
       <button class="btn-outline">View Dashboard</button>
       <button class="icon-btn help-btn">?</button>
@@ -47,7 +47,13 @@ const WIDGET_HTML = `
     </div>
     <hr class="divider-light">
     <p class="instruction">Clarify inputs/outputs, edge cases, constraints. Ask questions aloud.</p>
-    <div class="controls">
+    <div class="section-actions">
+      <button class="btn-primary start-sec-btn">Start Recording →</button>
+      <div class="row-center">
+        <button class="btn-outline-subtle skip-btn">Skip Section →</button>
+      </div>
+    </div>
+    <div class="controls hidden">
       <div class="rec-group">
         <button class="icon-btn rec-dot stop-btn">⏺</button>
         <span class="timer section-timer">00:00</span>
@@ -55,9 +61,11 @@ const WIDGET_HTML = `
       <div class="transport">
         <button class="icon-btn pause-btn">⏸</button>
         <button class="icon-btn restart-btn">↻</button>
-        <button class="icon-btn next-btn">⏭</button>
       </div>
       <button class="icon-btn help-btn">?</button>
+    </div>
+    <div class="hidden complete-section-wrap">
+      <button class="btn-complete-section next-btn">Complete Section →</button>
     </div>
   </section>
   <hr class="divider">
@@ -89,7 +97,14 @@ const WIDGET_HTML = `
     </div>
     <hr class="divider-light">
     <p class="instruction">Describe your approach at a high level. What data structures or patterns will you use?</p>
-    <div class="controls">
+    <div class="section-actions">
+      <button class="btn-primary start-sec-btn">Start Recording →</button>
+      <div class="row-center gap-12">
+        <button class="btn-outline-subtle redo-btn">← Redo Last</button>
+        <button class="btn-outline-subtle skip-btn">Skip Section →</button>
+      </div>
+    </div>
+    <div class="controls hidden">
       <div class="rec-group">
         <button class="icon-btn rec-dot stop-btn">⏺</button>
         <span class="timer section-timer">00:00</span>
@@ -97,9 +112,11 @@ const WIDGET_HTML = `
       <div class="transport">
         <button class="icon-btn pause-btn">⏸</button>
         <button class="icon-btn restart-btn">↻</button>
-        <button class="icon-btn next-btn">⏭</button>
       </div>
       <button class="icon-btn help-btn">?</button>
+    </div>
+    <div class="hidden complete-section-wrap">
+      <button class="btn-complete-section next-btn">Complete Section →</button>
     </div>
   </section>
   <hr class="divider">
@@ -131,7 +148,14 @@ const WIDGET_HTML = `
     </div>
     <hr class="divider-light">
     <p class="instruction">Talk through your code as you write it. Explain each decision and logic step aloud.</p>
-    <div class="controls">
+    <div class="section-actions">
+      <button class="btn-primary start-sec-btn">Start Recording →</button>
+      <div class="row-center gap-12">
+        <button class="btn-outline-subtle redo-btn">← Redo Last</button>
+        <button class="btn-outline-subtle skip-btn">Skip Section →</button>
+      </div>
+    </div>
+    <div class="controls hidden">
       <div class="rec-group">
         <button class="icon-btn rec-dot stop-btn">⏺</button>
         <span class="timer section-timer">00:00</span>
@@ -139,9 +163,11 @@ const WIDGET_HTML = `
       <div class="transport">
         <button class="icon-btn pause-btn">⏸</button>
         <button class="icon-btn restart-btn">↻</button>
-        <button class="icon-btn next-btn">⏭</button>
       </div>
       <button class="icon-btn help-btn">?</button>
+    </div>
+    <div class="hidden complete-section-wrap">
+      <button class="btn-complete-section next-btn">Complete Section →</button>
     </div>
   </section>
   <hr class="divider">
@@ -173,7 +199,14 @@ const WIDGET_HTML = `
     </div>
     <hr class="divider-light">
     <p class="instruction">Walk through test cases. Trace your code with examples. Consider edge cases.</p>
-    <div class="controls">
+    <div class="section-actions">
+      <button class="btn-primary start-sec-btn">Start Recording →</button>
+      <div class="row-center gap-12">
+        <button class="btn-outline-subtle redo-btn">← Redo Last</button>
+        <button class="btn-outline-subtle skip-btn">Skip Section →</button>
+      </div>
+    </div>
+    <div class="controls hidden">
       <div class="rec-group">
         <button class="icon-btn rec-dot stop-btn">⏺</button>
         <span class="timer section-timer">00:00</span>
@@ -181,9 +214,11 @@ const WIDGET_HTML = `
       <div class="transport">
         <button class="icon-btn pause-btn">⏸</button>
         <button class="icon-btn restart-btn">↻</button>
-        <button class="icon-btn next-btn">⏭</button>
       </div>
       <button class="icon-btn help-btn">?</button>
+    </div>
+    <div class="hidden complete-section-wrap">
+      <button class="btn-complete-section next-btn">Complete Section →</button>
     </div>
   </section>
   <hr class="divider">
@@ -215,7 +250,14 @@ const WIDGET_HTML = `
     </div>
     <hr class="divider-light">
     <p class="instruction">Time O(?), Space O(?). Why? Brute force vs. optimal. Discuss tradeoffs.</p>
-    <div class="controls">
+    <div class="section-actions">
+      <button class="btn-primary start-sec-btn">Start Recording →</button>
+      <div class="row-center gap-12">
+        <button class="btn-outline-subtle redo-btn">← Redo Last</button>
+        <button class="btn-outline-subtle skip-btn">Skip Section →</button>
+      </div>
+    </div>
+    <div class="controls hidden">
       <div class="rec-group">
         <button class="icon-btn rec-dot stop-btn">⏺</button>
         <span class="timer section-timer">00:00</span>
@@ -223,9 +265,11 @@ const WIDGET_HTML = `
       <div class="transport">
         <button class="icon-btn pause-btn">⏸</button>
         <button class="icon-btn restart-btn">↻</button>
-        <button class="icon-btn next-btn">⏭</button>
       </div>
       <button class="icon-btn help-btn">?</button>
+    </div>
+    <div class="hidden complete-section-wrap">
+      <button class="btn-complete-section next-btn">Finish Session →</button>
     </div>
   </section>
   <hr class="divider">
@@ -255,16 +299,45 @@ const WIDGET_HTML = `
     <p class="section-times-heading">Section Times</p>
     <div class="section-times"></div>
     <hr class="divider-light">
+
+    <!-- Pass / Fail badge -->
+    <div class="pass-fail-wrap">
+      <span class="pass-fail-badge" id="fb-pass-fail">—</span>
+    </div>
+
     <p class="feedback-heading">Quick Feedback</p>
     <div class="feedback">
-      <div class="fb-row"><span>Problem Clarification</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-empty"></span></span></div>
-      <div class="fb-row"><span>High Level Approach</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span></span></div>
-      <div class="fb-row"><span>Implementation</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-empty"></span><span class="dot-empty"></span></span></div>
-      <div class="fb-row"><span>Testing &amp; Edge Cases</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-empty"></span></span></div>
-      <div class="fb-row"><span>Complexity &amp; Tradeoffs</span><span class="rating-dots"><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span><span class="dot-filled"></span></span></div>
+      <div class="fb-row">
+        <span>Communication</span>
+        <span class="rating-dots" id="fb-communication">
+          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+        </span>
+      </div>
+      <div class="fb-row">
+        <span>Problem Solving</span>
+        <span class="rating-dots" id="fb-ps">
+          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+        </span>
+      </div>
+      <div class="fb-row">
+        <span>Code</span>
+        <span class="rating-dots" id="fb-code">
+          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+        </span>
+      </div>
+      <div class="fb-row fb-row-overall">
+        <span>Overall</span>
+        <span class="rating-dots" id="fb-overall">
+          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+        </span>
+      </div>
     </div>
+
+    <!-- Overall takeaway -->
+    <p class="overall-takeaway" id="fb-takeaway"></p>
+
     <div class="row-center gap-12" style="margin-top:16px">
-      <button class="btn-outline" id="btn-view-analysis">View Full Analysis</button>
+      <button class="btn-outline">View Full Analysis</button>
       <button class="btn-outline" id="btn-new-session">New Session</button>
     </div>
   </section>
@@ -285,7 +358,6 @@ const WIDGET_HTML = `
       <span class="mini-sep"></span>
       <button class="icon-btn pause-btn">⏸</button>
       <button class="icon-btn restart-btn">↻</button>
-      <button class="icon-btn next-btn">⏭</button>
     </div>
     <button class="icon-btn" id="btn-expand-mini">▼</button>
     <button class="icon-btn close-btn">✕</button>
