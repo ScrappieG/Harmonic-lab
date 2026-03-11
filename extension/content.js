@@ -52,15 +52,20 @@
   host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647;';
   document.body.appendChild(host);
 
+  // ===== TRACK USER-CLOSED STATE =====
+  var userClosed = false;
+
   // ===== LISTEN FOR EXTENSION ICON CLICK =====
   chrome.runtime.onMessage.addListener(function (msg) {
     if (msg.action === 'toggle') {
       if (host.style.display === 'none') {
+        // User is explicitly reopening via toolbar icon
+        userClosed = false;
         host.style.display = '';
       } else {
-        // Only allow closing via icon click if NOT recording
         var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
         if (!isRecording) {
+          userClosed = true;
           host.style.display = 'none';
         }
       }
@@ -109,7 +114,10 @@
         problemName = slugToTitle(newMatch[1]);
         injectName();
         setTimeout(retryName, 1500);
-        host.style.display = '';
+        // Only auto-show if user hasn't explicitly closed it
+        if (!userClosed) {
+          host.style.display = '';
+        }
       } else {
         host.style.display = 'none';
       }
@@ -504,7 +512,6 @@
       }).join('');
     }
 
-    // TODO: replace with real API call
     updateFeedback({
       Communication: 3,
       Communication_reason: 'Clear explanation of constraints and edge cases.',
@@ -618,11 +625,12 @@
     });
   });
 
-  // ===== CLOSE BUTTONS — only work when NOT recording =====
+  // ===== CLOSE BUTTONS — set userClosed flag =====
   root.querySelectorAll('.close-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
       if (!isRecording) {
+        userClosed = true;
         host.style.display = 'none';
       }
     });
