@@ -59,7 +59,6 @@ function FeedbackCard({
 
 function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
   const { session, score, problemDetails } = detail
-  const technicalScore = score.scoreTechnical ?? null
 
   return (
     <>
@@ -77,7 +76,7 @@ function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
         </article>
         <article className="rounded-2xl border border-stone-300/90 bg-stone-50/70 p-3.5 md:p-4">
           <p className="brand-mono text-xs uppercase tracking-wide text-stone-500">Technical</p>
-          {renderScoreValue(technicalScore)}
+          {renderScoreValue(score.scoreTechnical)}
         </article>
         <article className="rounded-2xl border border-stone-300/90 bg-stone-50/70 p-3.5 md:p-4">
           <p className="brand-mono text-xs uppercase tracking-wide text-stone-500">Communication</p>
@@ -105,7 +104,7 @@ function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
         <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Feedback</h2>
         <div className="mt-4 overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70">
           <FeedbackCard
-            body={score.feedbackOverall}
+            body={score.feedbackTechnical}
             accentLabel="TECHNICAL"
           />
           <FeedbackCard
@@ -128,7 +127,7 @@ function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
           Key Insights
         </p>
         <p className="mt-2 text-base leading-relaxed text-stone-700 md:text-lg">
-          {score.overallTakeaway ?? 'No takeaway provided.'}
+          {score.feedbackOverall ?? 'No overall feedback available.'}
         </p>
       </section>
 

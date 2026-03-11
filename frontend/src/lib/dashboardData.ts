@@ -14,6 +14,8 @@ type ScoreRow = {
   session_id: string
   score_overall: number | null
   feedback_overall: string | null
+  score_technical: number | null
+  feedback_technical: string | null
   score_comm: number | null
   feedback_comm: string | null
   score_ps: number | null
@@ -73,13 +75,14 @@ function mapSessionDetail(session: SessionRow, score: ScoreRow | null, problemDe
     score: {
       scoreOverall: score?.score_overall ?? null,
       feedbackOverall: score?.feedback_overall ?? null,
+      scoreTechnical: score?.score_technical ?? null,
+      feedbackTechnical: score?.feedback_technical ?? null,
       scoreComm: score?.score_comm ?? null,
       feedbackComm: score?.feedback_comm ?? null,
       scorePs: score?.score_ps ?? null,
       feedbackPs: score?.feedback_ps ?? null,
       pass: score?.pass ?? null,
       overallTakeaway: score?.overall_takeaway ?? null,
-      scoreTechnical: null,
     },
     problemDetails: {
       code: problemDetails?.code ?? null,
@@ -207,7 +210,7 @@ export async function fetchDashboardSessionDetail(sessionId: string): Promise<Da
     supabase
       .from('score')
       .select(
-        'session_id,score_overall,feedback_overall,score_comm,feedback_comm,score_ps,feedback_ps,pass,overall_takeaway'
+        'session_id,score_overall,feedback_overall,score_technical,feedback_technical,score_comm,feedback_comm,score_ps,feedback_ps,pass,overall_takeaway'
       )
       .eq('session_id', sessionId)
       .maybeSingle(),

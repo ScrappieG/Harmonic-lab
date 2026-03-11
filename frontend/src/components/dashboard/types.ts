@@ -36,14 +36,14 @@ export type SessionTrendPoint = {
 export type SessionScoreData = {
   scoreOverall: number | null
   feedbackOverall: string | null
+  scoreTechnical: number | null
+  feedbackTechnical: string | null
   scoreComm: number | null
   feedbackComm: string | null
   scorePs: number | null
   feedbackPs: string | null
   pass: boolean | null
   overallTakeaway: string | null
-  // Not in current DB schema; temporary UI field for the mock summary card.
-  scoreTechnical?: number | null
 }
 
 export type SessionProblemDetailsData = {
