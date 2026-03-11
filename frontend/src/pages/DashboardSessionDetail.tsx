@@ -1,8 +1,10 @@
+import { useCallback, useEffect, useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
-import { sessionDetailsById } from '@/components/dashboard/mockData'
 import type { SessionDetailData } from '@/components/dashboard/types'
+import { fetchDashboardSessionDetail } from '@/lib/dashboardData'
+import { supabase } from '@/lib/supabase'
 
 const dashboardShellClass = 'mx-auto w-full max-w-5xl px-6 lg:px-8'
 
@@ -88,7 +90,11 @@ function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
         <article className="rounded-2xl border border-stone-300/90 bg-stone-50/70 p-3.5 md:p-4">
           <p className="brand-mono text-xs uppercase tracking-wide text-stone-500">Outcome</p>
           <p className="brand-serif mt-1.5 text-xl leading-none text-stone-900 md:text-2xl">
-            <span className={score.pass ? 'text-lime-900' : 'text-rose-700'}>{score.pass ? 'Pass' : 'Fail'}</span>
+            {score.pass === null ? (
+              <span className="text-stone-500">—</span>
+            ) : (
+              <span className={score.pass ? 'text-lime-900' : 'text-rose-700'}>{score.pass ? 'Pass' : 'Fail'}</span>
+            )}
           </p>
         </article>
       </section>
@@ -148,8 +154,48 @@ function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
 
 function DashboardSessionDetail() {
   const { sessionId } = useParams()
-  const detail = sessionId ? sessionDetailsById[sessionId] : undefined
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isSignedIn, setIsSignedIn] = useState(false)
+  const [detail, setDetail] = useState<SessionDetailData | null>(null)
   const title = detail?.session.problemName ?? 'Session'
+
+  const loadDetail = useCallback(async () => {
+    if (!sessionId) {
+      setIsSignedIn(true)
+      setDetail(null)
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const data = await fetchDashboardSessionDetail(sessionId)
+      setIsSignedIn(data.signedIn)
+      setDetail(data.detail)
+    } catch (loadError) {
+      const message = loadError instanceof Error ? loadError.message : 'Failed to load session.'
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    loadDetail()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      loadDetail()
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [loadDetail])
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-stone-100 via-stone-100 to-stone-200/45">
@@ -182,7 +228,42 @@ function DashboardSessionDetail() {
 
         <h1 className="brand-serif mt-3 text-3xl leading-none tracking-tight text-stone-900 md:text-4xl">{title}</h1>
 
-        {detail ? (
+        {isLoading ? (
+          <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 text-stone-600 md:p-6">
+            Loading session details...
+          </section>
+        ) : error ? (
+          <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 md:p-6">
+            <h2 className="brand-serif text-2xl leading-none text-rose-900 md:text-3xl">Could not load session</h2>
+            <p className="mt-2 text-sm text-rose-800">{error}</p>
+            <button
+              type="button"
+              onClick={loadDetail}
+              className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200"
+            >
+              Retry
+            </button>
+          </section>
+        ) : !isSignedIn ? (
+          <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
+            <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Sign in to view your sessions</h2>
+            <p className="mt-2 text-base text-stone-600 md:text-lg">
+              This session detail page is available after signing in with Google.
+            </p>
+            <button
+              type="button"
+              onClick={() =>
+                supabase.auth.signInWithOAuth({
+                  provider: 'google',
+                  options: { redirectTo: `${window.location.origin}/auth/callback` },
+                })
+              }
+              className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+            >
+              Sign in
+            </button>
+          </section>
+        ) : detail ? (
           <SessionDetailContent detail={detail} />
         ) : (
           <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">

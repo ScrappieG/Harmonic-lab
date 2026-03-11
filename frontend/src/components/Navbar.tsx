@@ -1,4 +1,12 @@
 import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+
+async function signInWithGoogle() {
+  await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${window.location.origin}/auth/callback` },
+  })
+}
 
 function Navbar() {
   return (
@@ -29,6 +37,7 @@ function Navbar() {
 
         <button
           type="button"
+          onClick={signInWithGoogle}
           className="ml-auto rounded-lg bg-lime-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-lime-950"
         >
           Sign in
