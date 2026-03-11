@@ -35,6 +35,8 @@ export const sessionDetails: SessionDetailData[] = [
       pass: true,
       feedbackOverall:
         'Solid grasp of hash-based lookups and collision detection. Consider discussing cache hit ratios and their impact on effective latency.',
+      feedbackTechnical:
+        'Solid grasp of hash-based lookups and collision detection. Consider discussing cache hit ratios and their impact on effective latency.',
       feedbackComm:
         'Strong clarification phase - asked about scale and read/write ratios early. Work on narrating your decision-making process more explicitly.',
       feedbackPs:
@@ -81,6 +83,7 @@ export const sessionDetails: SessionDetailData[] = [
       scorePs: 3,
       pass: false,
       feedbackOverall: 'Basic sliding window approach was correct, but scaling tradeoffs remained underdeveloped.',
+      feedbackTechnical: 'Basic sliding window approach was correct, but scaling tradeoffs remained underdeveloped.',
       feedbackComm: 'Reasoning was understandable, though pacing was uneven in the second half.',
       feedbackPs: 'Could improve by explicitly comparing token bucket vs leaky bucket under bursty traffic.',
       overallTakeaway: 'Solid baseline solution with room to deepen systems tradeoff analysis.',
@@ -104,6 +107,7 @@ export const sessionDetails: SessionDetailData[] = [
       scorePs: 4,
       pass: true,
       feedbackOverall: 'Strong discussion of at-least-once delivery and ordering constraints.',
+      feedbackTechnical: 'Strong discussion of at-least-once delivery and ordering constraints.',
       feedbackComm: 'Clear structure and smooth transitions between requirements and design choices.',
       feedbackPs: 'Good failure-mode coverage; add more depth on consumer lag recovery.',
       overallTakeaway: 'Strong systems reasoning with balanced communication and tradeoff framing.',
@@ -127,6 +131,7 @@ export const sessionDetails: SessionDetailData[] = [
       scorePs: 3,
       pass: false,
       feedbackOverall: 'Identified indexing options but lacked selectivity and cost model discussion.',
+      feedbackTechnical: 'Identified indexing options but lacked selectivity and cost model discussion.',
       feedbackComm: 'Answers were brief; expand on why each index strategy fits the workload.',
       feedbackPs: 'Need stronger quantitative reasoning around read/write amplification.',
       overallTakeaway: 'Good start; emphasize workload characteristics and measurable tradeoffs.',
@@ -150,6 +155,7 @@ export const sessionDetails: SessionDetailData[] = [
       scorePs: 3,
       pass: true,
       feedbackOverall: 'Strong balancing algorithm selection and health-check strategy.',
+      feedbackTechnical: 'Strong balancing algorithm selection and health-check strategy.',
       feedbackComm: 'Good narrative flow and concise articulation of assumptions.',
       feedbackPs: 'Add deeper discussion of failover blast radius and zonal routing.',
       overallTakeaway: 'High-quality design and communication with minor depth improvements possible.',
@@ -173,6 +179,7 @@ export const sessionDetails: SessionDetailData[] = [
       scorePs: 2,
       pass: true,
       feedbackOverall: 'Correctly covered cache-aside and invalidation basics.',
+      feedbackTechnical: 'Correctly covered cache-aside and invalidation basics.',
       feedbackComm: 'Communication was mostly clear; transitions could be crisper.',
       feedbackPs: 'Discuss stale reads and stampede mitigation in more detail.',
       overallTakeaway: 'Competent solution with clear next steps for deeper robustness analysis.',
@@ -196,6 +203,7 @@ export const sessionDetails: SessionDetailData[] = [
       scorePs: 3,
       pass: true,
       feedbackOverall: 'Solid understanding of auth, routing, and rate limiting responsibilities.',
+      feedbackTechnical: 'Solid understanding of auth, routing, and rate limiting responsibilities.',
       feedbackComm: 'Explanations were clear and appropriately scoped.',
       feedbackPs: 'Could add more detail on observability and policy rollout controls.',
       overallTakeaway: 'Strong baseline architecture discussion with a few advanced topics to sharpen.',
