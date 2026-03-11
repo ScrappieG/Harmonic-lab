@@ -3,8 +3,17 @@
   "name": "articuLeet",
   "version": "1.0.0",
   "description": "Practice articulating your LeetCode solutions aloud.",
-  "action": {},
-  "permissions": ["storage"],
+  "action": {
+    "default_icon": {
+      "48": "icons/icon_48.png",
+      "300": "icons/icon_300.png"
+    }
+  },
+  "icons": {
+    "48": "icons/icon_48.png",
+    "300": "icons/icon_300.png"
+  },
+  "permissions": ["storage", "scripting", "activeTab"],
   "host_permissions": ["https://articuleet.workers.dev/*"],
   "externally_connectable": {
     "matches": ["https://articuleet.com/*", "https://www.articuleet.com/*"]

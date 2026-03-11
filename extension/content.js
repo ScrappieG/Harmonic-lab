@@ -52,9 +52,18 @@
   host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647;';
   document.body.appendChild(host);
 
+  // ===== LISTEN FOR EXTENSION ICON CLICK =====
   chrome.runtime.onMessage.addListener(function (msg) {
     if (msg.action === 'toggle') {
-      host.style.display = host.style.display === 'none' ? '' : 'none';
+      if (host.style.display === 'none') {
+        host.style.display = '';
+      } else {
+        // Only allow closing via icon click if NOT recording
+        var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
+        if (!isRecording) {
+          host.style.display = 'none';
+        }
+      }
     }
   });
 
@@ -149,6 +158,14 @@
     };
   });
 
+  // ===== CLOSE BUTTON VISIBILITY =====
+  function updateCloseButtons() {
+    var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
+    root.querySelectorAll('.close-btn').forEach(function (btn) {
+      btn.style.display = isRecording ? 'none' : '';
+    });
+  }
+
   // ===== SHOW/HIDE SECTION UI =====
   function showActions(key) {
     var screen = screens[key];
@@ -185,6 +202,7 @@
     }
 
     if (key === 'mini' && currentSection) syncMini();
+    updateCloseButtons();
   }
 
   // ===== ADVANCE TO NEXT =====
@@ -264,6 +282,7 @@
       tickStart(key);
       showControls(key);
       refreshUI(key);
+      updateCloseButtons();
     });
   }
 
@@ -275,6 +294,7 @@
         tickStop(key);
         refreshUI(key);
         releaseMic();
+        updateCloseButtons();
         resolve();
         return;
       }
@@ -290,6 +310,7 @@
         tickStop(key);
         refreshUI(key);
         releaseMic();
+        updateCloseButtons();
         resolve();
       }, { once: true });
       s.recorder.stop();
@@ -384,9 +405,7 @@
     if (miniTimer) miniTimer.textContent = fmt(s.seconds);
   }
 
-  // ===== FEEDBACK RENDERER =====
-  // Call with JSON matching your output format:
-  // { Communication: 3, Ps: 2, code: 3, Pass: true, overall_takeaway: "..." }
+  // ===== FEEDBACK =====
   function updateFeedback(data) {
     function renderDots(id, score, max) {
       var el = root.querySelector('#' + id);
@@ -408,11 +427,9 @@
     renderDots('fb-ps', ps, 4);
     renderDots('fb-code', code, 4);
 
-    // Overall = rounded average of the three scores
     var overall = Math.round((comm + ps + code) / 3);
     renderDots('fb-overall', overall, 4);
 
-    // Pass / Fail badge
     var badge = root.querySelector('#fb-pass-fail');
     if (badge) {
       if (data.Pass === true) {
@@ -427,14 +444,12 @@
       }
     }
 
-    // Overall takeaway
     var takeaway = root.querySelector('#fb-takeaway');
     if (takeaway) {
       takeaway.textContent = data.overall_takeaway || '';
     }
   }
 
-  // ===== RESET FEEDBACK to empty state =====
   function resetFeedback() {
     ['fb-communication', 'fb-ps', 'fb-code', 'fb-overall'].forEach(function (id) {
       var el = root.querySelector('#' + id);
@@ -489,15 +504,13 @@
       }).join('');
     }
 
-    // ============================================================
-    // TODO: Replace mock with real API call
-    // ============================================================
+    // TODO: replace with real API call
     updateFeedback({
-      Communication: 4,
+      Communication: 3,
       Communication_reason: 'Clear explanation of constraints and edge cases.',
       Ps: 3,
       Ps_reason: 'Chose optimal hashmap approach quickly.',
-      code: 3,
+      code: 2,
       code_reason: 'Minor variable naming issues.',
       Pass: true,
       overall_takeaway: 'Solid walkthrough — tighten up variable naming and narrate edge-case handling earlier.'
@@ -511,6 +524,7 @@
     releaseMic();
     currentSection = null;
     resetFeedback();
+    updateCloseButtons();
   }
 
   // ===== WIRE UP SECTION BUTTONS =====
@@ -604,9 +618,16 @@
     });
   });
 
+  // ===== CLOSE BUTTONS — only work when NOT recording =====
   root.querySelectorAll('.close-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      host.style.display = 'none';
+      var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
+      if (!isRecording) {
+        host.style.display = 'none';
+      }
     });
   });
+
+  // Initial state
+  updateCloseButtons();
 })();
