@@ -63,6 +63,18 @@ class SupabaseClient:
         response.raise_for_status()
         return response.json()
 
+    async def upsert(self, table: str, data: dict | list, on_conflict: str) -> list:
+        """UPSERT rows, merging on the given conflict column(s)."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                self._rest_url(table),
+                headers={**self.headers, "Prefer": "return=representation,resolution=merge-duplicates"},
+                params={"on_conflict": on_conflict},
+                json=data,
+            )
+        response.raise_for_status()
+        return response.json()
+
     async def delete(self, table: str, filters: dict) -> list:
         """DELETE rows matching filters. filters = {"column": "eq.value", ...}"""
         async with httpx.AsyncClient() as client:

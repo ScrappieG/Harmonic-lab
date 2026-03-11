@@ -58,3 +58,12 @@ async def get_session_result(db: SupabaseClient, session_id: str, user_id: str) 
         "score": scores[0] if scores else None,
         "problem_details": details[0] if details else None,
     }
+
+
+async def insert_user(db: SupabaseClient, user_id: str, email: str) -> dict:
+    rows = await db.upsert(
+        "User",
+        {"id": user_id, "email": email},
+        on_conflict="id",
+    )
+    return rows[0]
