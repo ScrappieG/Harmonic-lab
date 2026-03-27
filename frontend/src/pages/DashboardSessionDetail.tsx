@@ -3,10 +3,10 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 
 import type { SessionDetailData } from '@/components/dashboard/types'
+import { Skeleton } from '@/components/ui/skeleton'
 import { fetchDashboardSessionDetail } from '@/lib/dashboardData'
 import { supabase } from '@/lib/supabase'
-
-const dashboardShellClass = 'mx-auto w-full max-w-5xl px-6 lg:px-8'
+import { useDashboardLayoutContext } from './DashboardLayout'
 
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -151,8 +151,80 @@ function SessionDetailContent({ detail }: { detail: SessionDetailData }) {
   )
 }
 
+function SessionDetailSkeleton() {
+  return (
+    <>
+      <div className="mt-5" aria-hidden="true">
+        <Skeleton className="h-4 w-40 rounded-sm" />
+      </div>
+
+      <section className="mt-6 grid grid-cols-2 gap-2.5 md:grid-cols-5 md:gap-3" aria-hidden="true">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <article key={`session-metric-skeleton-${index}`} className="rounded-2xl border border-stone-300/90 bg-stone-50/70 p-3.5 md:p-4">
+            <Skeleton className="h-3 w-20 rounded-sm" />
+            <Skeleton className="mt-3 h-7 w-16 md:h-8" />
+          </article>
+        ))}
+      </section>
+
+      <hr className="mt-8 border-stone-300/90" />
+
+      <section className="mt-8" aria-hidden="true">
+        <Skeleton className="h-8 w-32" />
+        <div className="mt-4 overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <article
+              key={`session-feedback-skeleton-${index}`}
+              className={`p-4 md:p-5 ${index < 2 ? 'border-b border-stone-300/90' : ''}`}
+            >
+              <Skeleton className="h-7 w-32 rounded-md" />
+              <Skeleton className="mt-3 h-4 w-full" />
+              <Skeleton className="mt-2 h-4 w-11/12" />
+              <Skeleton className="mt-2 h-4 w-4/5" />
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="mt-8 overflow-hidden rounded-2xl border border-lime-900/25 p-4 shadow-[0_10px_30px_rgba(20,20,15,0.06)] md:p-5"
+        aria-hidden="true"
+      >
+        <Skeleton className="h-7 w-40" />
+        <Skeleton className="mt-3 h-4 w-full" />
+        <Skeleton className="mt-2 h-4 w-[92%]" />
+        <Skeleton className="mt-2 h-4 w-3/4" />
+      </section>
+
+      <hr className="mt-8 border-stone-300/90" />
+
+      <section className="mt-8 pb-8" aria-hidden="true">
+        <Skeleton className="h-8 w-32" />
+
+        <article className="mt-4 overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/80">
+          <div className="flex items-center gap-1.5 border-b border-stone-300/90 bg-stone-200/40 px-4 py-2.5">
+            <span className="size-2 rounded-full bg-stone-300" />
+            <span className="size-2 rounded-full bg-stone-300" />
+            <span className="size-2 rounded-full bg-stone-300" />
+          </div>
+          <div className="p-4 md:p-5">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="mt-2 h-4 w-[96%]" />
+            <Skeleton className="mt-2 h-4 w-[90%]" />
+            <Skeleton className="mt-2 h-4 w-[94%]" />
+            <Skeleton className="mt-2 h-4 w-[88%]" />
+            <Skeleton className="mt-2 h-4 w-[91%]" />
+            <Skeleton className="mt-2 h-4 w-2/3" />
+          </div>
+        </article>
+      </section>
+    </>
+  )
+}
+
 function DashboardSessionDetail() {
   const { sessionId } = useParams()
+  const { dashboardData } = useDashboardLayoutContext()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSignedIn, setIsSignedIn] = useState(false)
@@ -183,104 +255,83 @@ function DashboardSessionDetail() {
   }, [sessionId])
 
   useEffect(() => {
-    loadDetail()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      loadDetail()
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
+    void loadDetail()
   }, [loadDetail])
 
+  useEffect(() => {
+    if (dashboardData?.signedIn === false) {
+      setIsSignedIn(false)
+      setDetail(null)
+      setError(null)
+      setIsLoading(false)
+    }
+  }, [dashboardData])
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-stone-100 via-stone-100 to-stone-200/45">
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-16 left-1/2 h-56 w-[48rem] -translate-x-1/2 rounded-full bg-stone-50/70 blur-3xl" />
-        <div className="absolute left-0 top-72 h-64 w-64 rounded-full bg-stone-200/55 blur-3xl" />
-      </div>
+    <>
+      <Link to=".." relative="path" className="inline-flex items-center gap-1.5 text-xs text-stone-500 transition-colors hover:text-lime-900">
+        <ArrowLeft className="size-4" />
+        <span className="brand-mono text-xs uppercase tracking-wide">Back to sessions</span>
+      </Link>
 
-      <header className="relative z-10 border-b border-stone-200/90 bg-stone-100/88 backdrop-blur-sm">
-        <nav className={`${dashboardShellClass} flex items-center py-2.5`}>
-          <Link to="/" className="text-lg leading-none tracking-tight text-stone-900">
-            <span className="brand-serif">articu</span>
-            <span className="brand-mono">Leet</span>
-          </Link>
+      {isLoading ? (
+        <Skeleton className="mt-3 h-10 w-56 max-w-full rounded-md md:h-12" aria-hidden="true" />
+      ) : (
+        <h1 className="brand-serif mt-3 text-3xl leading-none tracking-tight text-stone-900 md:text-4xl">{title}</h1>
+      )}
 
+      {isLoading ? (
+        <SessionDetailSkeleton />
+      ) : error ? (
+        <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 md:p-6">
+          <h2 className="brand-serif text-2xl leading-none text-rose-900 md:text-3xl">Could not load session</h2>
+          <p className="mt-2 text-sm text-rose-800">{error}</p>
           <button
             type="button"
-            className="ml-auto rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+            onClick={loadDetail}
+            className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200"
           >
-            Account
+            Retry
           </button>
-        </nav>
-      </header>
-
-      <main className={`${dashboardShellClass} relative z-10 py-7 md:py-9`}>
-        <Link to="/dashboard" className="inline-flex items-center gap-1.5 text-xs text-stone-500 transition-colors hover:text-lime-900">
-          <ArrowLeft className="size-4" />
-          <span className="brand-mono text-xs uppercase tracking-wide">Back to sessions</span>
-        </Link>
-
-        <h1 className="brand-serif mt-3 text-3xl leading-none tracking-tight text-stone-900 md:text-4xl">{title}</h1>
-
-        {isLoading ? (
-          <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 text-stone-600 md:p-6">
-            Loading session details...
-          </section>
-        ) : error ? (
-          <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 md:p-6">
-            <h2 className="brand-serif text-2xl leading-none text-rose-900 md:text-3xl">Could not load session</h2>
-            <p className="mt-2 text-sm text-rose-800">{error}</p>
-            <button
-              type="button"
-              onClick={loadDetail}
-              className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200"
-            >
-              Retry
-            </button>
-          </section>
-        ) : !isSignedIn ? (
-          <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-            <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Sign in to view your sessions</h2>
-            <p className="mt-2 text-base text-stone-600 md:text-lg">
-              This session detail page is available after signing in with Google.
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                supabase.auth.signInWithOAuth({
-                  provider: 'google',
-                  options: { redirectTo: `${window.location.origin}/auth/callback` },
-                })
-              }
-              className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
-            >
-              Sign in
-            </button>
-          </section>
-        ) : detail ? (
-          <SessionDetailContent detail={detail} />
-        ) : (
-          <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-            <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Session not found</h2>
-            <p className="mt-2 text-base leading-relaxed text-stone-600 md:text-lg">
-              We could not find a session for id <span className="brand-mono text-stone-700">{sessionId ?? 'unknown'}</span>.
-            </p>
-            <Link
-              to="/dashboard"
-              className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
-            >
-              <ArrowLeft className="size-4" />
-              Back to sessions
-            </Link>
-          </section>
-        )}
-      </main>
-    </div>
+        </section>
+      ) : !isSignedIn ? (
+        <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
+          <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Sign in to view your sessions</h2>
+          <p className="mt-2 text-base text-stone-600 md:text-lg">
+            This session detail page is available after signing in with Google.
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: `${window.location.origin}/auth/callback` },
+              })
+            }
+            className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+          >
+            Sign in
+          </button>
+        </section>
+      ) : detail ? (
+        <SessionDetailContent detail={detail} />
+      ) : (
+        <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
+          <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Session not found</h2>
+          <p className="mt-2 text-base leading-relaxed text-stone-600 md:text-lg">
+            We could not find a session for id <span className="brand-mono text-stone-700">{sessionId ?? 'unknown'}</span>.
+          </p>
+          <Link
+            to=".."
+            relative="path"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+          >
+            <ArrowLeft className="size-4" />
+            Back to sessions
+          </Link>
+        </section>
+      )}
+    </>
   )
 }
 
