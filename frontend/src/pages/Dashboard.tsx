@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
 
 import SessionList from '@/components/dashboard/SessionList'
 import type { DashboardStats, SessionTrendPoint } from '@/components/dashboard/types'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
 import { useDashboardLayoutContext } from './DashboardLayout'
@@ -166,11 +168,12 @@ function Dashboard() {
   const stats = dashboardData?.stats ?? emptyStats
   const trend = dashboardData?.trend ?? []
   const sessionItems = dashboardData?.sessions ?? []
+  const isRefreshing = isLoading && Boolean(dashboardData)
 
   return (
     <section className="w-full">
       <h1 className="brand-serif text-xl leading-none tracking-tight text-stone-900 sm:text-2xl md:text-3xl">
-        Your Sessions
+        Your Dashboard
       </h1>
 
       {isLoading && !dashboardData ? (
@@ -225,14 +228,7 @@ function Dashboard() {
             </div>
           </div>
 
-          {sessionItems.length === 0 ? (
-            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-              <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">No sessions yet</h2>
-              <p className="mt-2 text-base text-stone-600 md:text-lg">
-                Complete your first interview session and it will appear here.
-              </p>
-            </section>
-          ) : (
+          {sessionItems.length > 0 ? (
             <>
               <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
                 <p className="brand-serif text-lg leading-none text-stone-600 md:text-xl">Last 5 sessions</p>
@@ -245,7 +241,33 @@ function Dashboard() {
                   </p>
                 )}
               </article>
+            </>
+          ) : null}
 
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-9">
+            <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Session History</h2>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void reloadDashboard()}
+              disabled={isRefreshing}
+              className="shrink-0 border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-200"
+            >
+              <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh sessions'}
+            </Button>
+          </div>
+
+          {sessionItems.length === 0 ? (
+            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
+              <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">No sessions yet</h2>
+              <p className="mt-2 text-base text-stone-600 md:text-lg">
+                Complete your first interview session and it will appear here.
+              </p>
+            </section>
+          ) : (
+            <>
               <SessionList items={sessionItems} className="mt-6 md:mt-7" />
             </>
           )}
