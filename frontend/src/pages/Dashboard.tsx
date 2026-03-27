@@ -92,6 +92,7 @@ function DashboardHomeSkeleton() {
 }
 
 function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
+  const reduceMotion = useReducedMotion() ?? false
   const [chartKey, setChartKey] = useState(0)
   const [isChartReady, setIsChartReady] = useState(false)
   const trendSignature = trend.map(({ date, score }) => `${date}:${score}`).join('|')
@@ -128,8 +129,32 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
         >
           <defs>
             <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-score)" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="var(--color-score)" stopOpacity={0.03} />
+              <stop offset="0%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.2 : 0.14}>
+                {!reduceMotion ? (
+                  <animate
+                    attributeName="stop-opacity"
+                    values="0.14;0.42;0.14"
+                    dur="3900ms"
+                    repeatCount="indefinite"
+                    calcMode="spline"
+                    keyTimes="0;0.5;1"
+                    keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                  />
+                ) : null}
+              </stop>
+              <stop offset="100%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.14 : 0.1}>
+                {!reduceMotion ? (
+                  <animate
+                    attributeName="stop-opacity"
+                    values="0.08;0.12;0.08"
+                    dur="3900ms"
+                    repeatCount="indefinite"
+                    calcMode="spline"
+                    keyTimes="0;0.5;1"
+                    keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                  />
+                ) : null}
+              </stop>
             </linearGradient>
           </defs>
           {trend.length === 1 ? (
