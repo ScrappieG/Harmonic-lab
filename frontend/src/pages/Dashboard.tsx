@@ -1,3 +1,4 @@
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
@@ -24,6 +25,24 @@ const emptyStats: DashboardStats = {
   totalMinutes: 0,
 }
 
+const revealUp: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
+}
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+}
+
 async function signInWithGoogle() {
   await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -43,19 +62,19 @@ function DashboardHomeSkeleton() {
         ))}
       </div>
 
-      <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
+      <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] dark:border-stone-800 dark:bg-stone-900/80 dark:shadow-none sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="mt-4 h-44 w-full rounded-xl md:h-48" />
       </article>
 
       <section
-        className="mt-6 overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70 md:mt-7"
+        className="mt-6 overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/75 md:mt-7"
         aria-hidden="true"
       >
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={`dashboard-row-skeleton-${index}`}
-            className={`flex items-center justify-between gap-3 px-4 py-4 sm:px-5 ${index < 3 ? 'border-b border-stone-300/90' : ''}`}
+            className={`flex items-center justify-between gap-3 px-4 py-4 sm:px-5 ${index < 3 ? 'border-b border-stone-300/90 dark:border-stone-800' : ''}`}
           >
             <div className="min-w-0 flex-1">
               <Skeleton className="h-5 w-3/5 max-w-64" />
@@ -131,7 +150,7 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
             tickLine={false}
             tickMargin={10}
             interval={0}
-            className="text-xs text-stone-500"
+            className="text-xs text-stone-500 dark:text-stone-400"
           />
           <YAxis
             domain={[0, 4]}
@@ -139,7 +158,7 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
             axisLine={false}
             tickLine={false}
             tickMargin={8}
-            className="text-xs text-stone-500"
+            className="text-xs text-stone-500 dark:text-stone-400"
           />
           <ChartTooltip cursor={false} content={<ChartTooltipContent labelKey="date" />} />
           <Area
@@ -163,6 +182,7 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
 }
 
 function Dashboard() {
+  const reduceMotion = useReducedMotion() ?? false
   const { dashboardData, isLoading, error, reloadDashboard } = useDashboardLayoutContext()
   const isSignedIn = dashboardData?.signedIn ?? false
   const stats = dashboardData?.stats ?? emptyStats
@@ -172,104 +192,126 @@ function Dashboard() {
 
   return (
     <section className="w-full">
-      <h1 className="brand-serif text-xl leading-none tracking-tight text-stone-900 sm:text-2xl md:text-3xl">
+      <motion.h1
+        className="brand-serif text-xl leading-none tracking-tight text-stone-900 dark:text-stone-100 sm:text-2xl md:text-3xl"
+        initial={reduceMotion ? false : 'hidden'}
+        animate={reduceMotion ? undefined : 'visible'}
+        variants={reduceMotion ? undefined : revealUp}
+      >
         Your Dashboard
-      </h1>
+      </motion.h1>
 
       {isLoading && !dashboardData ? (
         <DashboardHomeSkeleton />
       ) : error && !dashboardData ? (
-        <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 md:p-6">
+        <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 dark:border-rose-900/70 dark:bg-rose-950/50 md:p-6">
           <h2 className="brand-serif text-2xl leading-none text-rose-900 md:text-3xl">Could not load dashboard</h2>
-          <p className="mt-2 text-sm text-rose-800">{error}</p>
+          <p className="mt-2 text-sm text-rose-800 dark:text-rose-200">{error}</p>
           <button
             type="button"
             onClick={reloadDashboard}
-            className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200"
+            className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200 dark:border-rose-800 dark:bg-rose-900/50 dark:text-rose-100 dark:hover:bg-rose-900/70"
           >
             Retry
           </button>
         </section>
       ) : !isSignedIn ? (
-        <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-          <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Sign in to view your sessions</h2>
-          <p className="mt-2 text-base text-stone-600 md:text-lg">
+        <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 dark:border-stone-800 dark:bg-stone-900/75 md:p-6">
+          <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">Sign in to view your sessions</h2>
+          <p className="mt-2 text-base text-stone-600 dark:text-stone-400 md:text-lg">
             Your dashboard will appear here once you sign in with Google.
           </p>
           <button
             type="button"
             onClick={signInWithGoogle}
-            className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+            className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700"
           >
             Sign in
           </button>
         </section>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-7">
-            <div>
-              <p className="text-xs text-stone-500">Sessions</p>
-              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 md:text-3xl">
+          <motion.div
+            className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-7"
+            initial={reduceMotion ? false : 'hidden'}
+            animate={reduceMotion ? undefined : 'visible'}
+            variants={reduceMotion ? undefined : staggerContainer}
+          >
+            <motion.div variants={reduceMotion ? undefined : revealUp}>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Sessions</p>
+              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 dark:text-stone-100 md:text-3xl">
                 {stats.sessions}
               </p>
-            </div>
-            <div>
-              <p className="text-xs text-stone-500">Average Score</p>
-              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 md:text-3xl">
+            </motion.div>
+            <motion.div variants={reduceMotion ? undefined : revealUp}>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Average Score</p>
+              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 dark:text-stone-100 md:text-3xl">
                 <span>{stats.avgScore.toFixed(1)}</span>
-                <span className="ml-1.5 text-lg text-stone-500 md:text-xl">/ {stats.maxScore}</span>
+                <span className="ml-1.5 text-lg text-stone-500 dark:text-stone-400 md:text-xl">/ {stats.maxScore}</span>
               </p>
-            </div>
-            <div className="col-span-2 md:col-span-1">
-              <p className="text-xs text-stone-500">Total Time ArticuLeeted</p>
-              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 md:text-3xl">
+            </motion.div>
+            <motion.div variants={reduceMotion ? undefined : revealUp} className="col-span-2 md:col-span-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400">Total Time ArticuLeeted</p>
+              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 dark:text-stone-100 md:text-3xl">
                 {stats.totalMinutes}m
               </p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {sessionItems.length > 0 ? (
-            <>
-              <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
-                <p className="brand-serif text-lg leading-none text-stone-600 md:text-xl">Last 5 sessions</p>
+            <motion.article
+              className="dashboard-hover-card mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] dark:border-stone-800 dark:bg-stone-900/80 dark:shadow-none sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6"
+              initial={reduceMotion ? false : 'hidden'}
+              animate={reduceMotion ? undefined : 'visible'}
+              variants={reduceMotion ? undefined : revealUp}
+            >
+                <p className="brand-serif text-lg leading-none text-stone-600 dark:text-stone-300 md:text-xl">Last 5 sessions</p>
 
                 {trend.length > 0 ? (
                   <TrendChart trend={trend} />
                 ) : (
-                  <p className="mt-4 text-sm text-stone-600">
+                  <p className="mt-4 text-sm text-stone-600 dark:text-stone-400">
                     No scored sessions yet. Your trend chart will appear after your first scored run.
                   </p>
                 )}
-              </article>
-            </>
+            </motion.article>
           ) : null}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-9">
-            <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Session History</h2>
+          <motion.div
+            className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-9"
+            initial={reduceMotion ? false : 'hidden'}
+            animate={reduceMotion ? undefined : 'visible'}
+            variants={reduceMotion ? undefined : revealUp}
+          >
+            <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">Session History</h2>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => void reloadDashboard()}
               disabled={isRefreshing}
-              className="shrink-0 border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-200"
+              className="shrink-0 border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800"
             >
               <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
               {isRefreshing ? 'Refreshing...' : 'Refresh sessions'}
             </Button>
-          </div>
+          </motion.div>
 
           {sessionItems.length === 0 ? (
-            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-              <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">No sessions yet</h2>
-              <p className="mt-2 text-base text-stone-600 md:text-lg">
+            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 dark:border-stone-800 dark:bg-stone-900/75 md:p-6">
+              <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">No sessions yet</h2>
+              <p className="mt-2 text-base text-stone-600 dark:text-stone-400 md:text-lg">
                 Complete your first interview session and it will appear here.
               </p>
             </section>
           ) : (
-            <>
+            <motion.div
+              initial={reduceMotion ? false : 'hidden'}
+              animate={reduceMotion ? undefined : 'visible'}
+              variants={reduceMotion ? undefined : revealUp}
+            >
               <SessionList items={sessionItems} className="mt-6 md:mt-7" />
-            </>
+            </motion.div>
           )}
         </>
       )}
