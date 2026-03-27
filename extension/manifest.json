@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "articuLeet",
+  "version": "1.0.0",
+  "description": "Practice articulating your LeetCode solutions aloud.",
+  "action": {},
+  "permissions": ["storage"],
+  "host_permissions": ["https://articuleet.workers.dev/*"],
+  "externally_connectable": {
+    "matches": ["https://articuleet.com/*", "https://www.articuleet.com/*"]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://leetcode.com/*"],
+      "js": ["widget-html.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["widget.css"],
+      "matches": ["*://leetcode.com/*"]
+    }
+  ]
+}
