@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard'
 import DashboardSessionDetail from './pages/DashboardSessionDetail'
 import Home from './pages/Home'
 import AuthCallback from './pages/AuthCallback'
+import AuthExtension from './pages/AuthExtension'
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/dashboard/:sessionId" element={<DashboardSessionDetail />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/extension" element={<AuthExtension />} />
       </Routes>
     </BrowserRouter>
   )

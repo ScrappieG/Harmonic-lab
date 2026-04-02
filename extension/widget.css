@@ -638,3 +638,77 @@
   color: #a8a29e;
   font-style: italic;
 }
+
+/* Login screen */
+.login-content {
+  text-align: center;
+  padding: 24px 18px;
+}
+
+.login-heading {
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 14px;
+  color: #78716c;
+  margin-bottom: 2px;
+}
+
+.login-brand {
+  font-family: 'Hedvig Letters Serif', Georgia, serif;
+  font-size: 26px;
+  font-weight: 400;
+  color: #1c1917;
+  margin-bottom: 12px;
+}
+
+.login-brand b {
+  font-weight: 700;
+}
+
+.login-sub {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #78716c;
+  margin-bottom: 4px;
+}
+
+.btn-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 0;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #1c1917;
+  background: #fff;
+  border: 1.5px solid #d6d3d1;
+  border-radius: 24px;
+  cursor: pointer;
+  transition: background .1s, border-color .15s, box-shadow .15s;
+}
+
+.btn-google:hover {
+  background: #fafaf9;
+  border-color: #a8a29e;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .06);
+}
+
+.google-icon {
+  flex-shrink: 0;
+}
+
+.login-footer-text {
+  font-size: 11px;
+  color: #a8a29e;
+  margin-top: 14px;
+}
+
+/* Loading state for auth check */
+.auth-loading {
+  text-align: center;
+  padding: 40px 18px;
+  color: #a8a29e;
+  font-size: 13px;
+}
