@@ -6,7 +6,6 @@ import time
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-
 JsonDict = Dict[str, Any]
 
 
@@ -14,9 +13,9 @@ class OpenAILLM:
     """
     Minimal OpenAI Responses API wrapper that returns parsed JSON.
 
-    Requires:
-        pip install openai
-        OPENAI_API_KEY set in environment
+    IMPORTANT for Cloudflare/Pyodide:
+    - Do not instantiate this at module import time.
+    - Create it only inside a request/function call.
     """
 
     def __init__(
@@ -68,7 +67,138 @@ class OpenAILLM:
         raise RuntimeError(f"LLM call failed after {self.max_retries} attempts: {last_error}")
 
 
-SPEAKER_INLINE_RE = re.compile(r"(?:(?<=\n)|^|(?<=\s))([A-Z][A-Za-z0-9' \-]{1,60}):\s")
+def get_speaker_inline_re() -> re.Pattern[str]:
+    return re.compile(r"(?:(?<=\n)|^|(?<=\s))([A-Z][A-Za-z0-9' \-]{1,60}):\s")
+
+
+def get_code_hint_re() -> re.Pattern[str]:
+    return re.compile(
+        r"(\bdef\b|\bclass\b|\breturn\b|==|!=|<=|>=|\{|\}|\[|\]|;|->|=>|"
+        r"\bpublic\b|\bstatic\b|\bvoid\b|\bint\b|\bString\b|\bprintln\b|\bconsole\.log\b)"
+    )
+
+
+def get_phase_patterns() -> Dict[str, List[str]]:
+    return {
+        "warmup": [
+            r"\bhello\b",
+            r"\bhi\b",
+            r"\bhow are you\b",
+            r"\bnice to meet\b",
+            r"\bthanks for (joining|signing up)\b",
+        ],
+        "problem_recap": [
+            r"\bso (the )?problem is\b",
+            r"\bwe('re| are) given\b",
+            r"\bwe need to\b",
+            r"\bthe goal is\b",
+            r"\bwe want to\b",
+            r"\bin other words\b",
+            r"\brestate\b",
+        ],
+        "clarifying": [
+            r"\bconstraints?\b",
+            r"\bedge cases?\b",
+            r"\binput\b",
+            r"\boutput\b",
+            r"\bwhat if\b",
+            r"\bassume\b",
+            r"\bguaranteed\b",
+            r"\bnull\b",
+            r"\bempty\b",
+            r"\bduplicates?\b",
+            r"\brange\b",
+            r"\blimits?\b",
+        ],
+        "approach": [
+            r"\bidea\b",
+            r"\bapproach\b",
+            r"\bplan\b",
+            r"\bstrategy\b",
+            r"\bwe can\b",
+            r"\bi think we\b",
+            r"\blet's\b",
+            r"\b(two pointers|hash map|hashmap|stack|queue|bfs|dfs|dp|dynamic programming|greedy|binary search|heap|priority queue|union find|trie)\b",
+        ],
+        "complexity": [
+            r"\bO\(",
+            r"\bbig[- ]o\b",
+            r"\btime complexity\b",
+            r"\bspace complexity\b",
+            r"\blinear\b",
+            r"\bconstant\b",
+            r"\bn log n\b",
+            r"\blogarithmic\b",
+        ],
+        "coding": [
+            r"\blet me (code|implement|write)\b",
+            r"\bi('ll| will) (code|implement|write)\b",
+            r"\bwriting (the )?code\b",
+            r"\bfunction\b",
+            r"\bclass\b",
+            r"\breturn\b",
+            r"\binitialize\b",
+            r"\bloop\b",
+        ],
+        "debug": [
+            r"\bdebug\b",
+            r"\bbug\b",
+            r"\berror\b",
+            r"\bexception\b",
+            r"\bfail(s|ed)?\b",
+            r"\bdoes(n't| not)\b work\b",
+            r"\boff[- ]by[- ]one\b",
+            r"\bfix\b",
+            r"\bwhy is\b",
+            r"\bwhy does\b",
+        ],
+        "testing": [
+            r"\btest\b",
+            r"\btest case\b",
+            r"\bdry run\b",
+            r"\bwalk through\b",
+            r"\bexample\b",
+            r"\btry this\b",
+        ],
+        "wrapup": [
+            r"\bany questions\b",
+            r"\bfeedback\b",
+            r"\bnext steps\b",
+            r"\bwrap up\b",
+            r"\bthank(s| you)\b",
+            r"\bgreat job\b",
+        ],
+    }
+
+
+def get_single_pass_system_prompt() -> str:
+    return """
+You are an honest, fair, and consistent technical interview coach.
+
+You are evaluating an ENTRY-LEVEL Software Engineering LeetCode-style interview.
+
+You must evaluate:
+1. Coding quality as demonstrated in the submitted code and interview discussion
+2. Worst-case time complexity
+3. Auxiliary space complexity
+4. Communication skills
+5. Problem-solving skills
+6. Overall score
+7. Pass/fail
+
+Important rules:
+- Be conservative and fair.
+- Do not nitpick minor syntax issues.
+- Do not over-penalize language-specific quirks.
+- Do not invent missing behaviors.
+- Use the transcript sections and code together.
+- Reason from the code actually shown.
+- Report worst-case complexity.
+- For auxiliary space, exclude input storage unless explicitly required.
+- Return VALID JSON ONLY.
+- No markdown.
+- No extra text.
+""".strip()
 
 
 @dataclass
@@ -85,7 +215,8 @@ def parse_turns(transcript: str) -> List[Turn]:
     if not text:
         return []
 
-    matches = list(SPEAKER_INLINE_RE.finditer(text))
+    speaker_inline_re = get_speaker_inline_re()
+    matches = list(speaker_inline_re.finditer(text))
     if not matches:
         return [Turn(speaker="UNKNOWN", text=text)]
 
@@ -100,15 +231,10 @@ def parse_turns(transcript: str) -> List[Turn]:
     return turns
 
 
-CODE_HINT_RE = re.compile(
-    r"(\bdef\b|\bclass\b|\breturn\b|==|!=|<=|>=|\{|\}|\[|\]|;|->|=>|"
-    r"\bpublic\b|\bstatic\b|\bvoid\b|\bint\b|\bString\b|\bprintln\b|\bconsole\.log\b)"
-)
-
-
 def code_hint_score(text: str) -> float:
+    code_hint_re = get_code_hint_re()
     symbols = len(re.findall(r"[{};\[\]=<>]|->|==|!=|<=|>=|=>", text))
-    keywords = len(CODE_HINT_RE.findall(text))
+    keywords = len(code_hint_re.findall(text))
     indentation = sum(1 for line in text.splitlines() if line.startswith(("  ", "\t")))
     return keywords + 0.8 * symbols + 0.5 * indentation
 
@@ -149,101 +275,10 @@ def infer_roles(turns: List[Turn]) -> Dict[str, str]:
     return roles
 
 
-PHASE_PATTERNS = {
-    "warmup": [
-        r"\bhello\b",
-        r"\bhi\b",
-        r"\bhow are you\b",
-        r"\bnice to meet\b",
-        r"\bthanks for (joining|signing up)\b",
-    ],
-    "problem_recap": [
-        r"\bso (the )?problem is\b",
-        r"\bwe('re| are) given\b",
-        r"\bwe need to\b",
-        r"\bthe goal is\b",
-        r"\bwe want to\b",
-        r"\bin other words\b",
-        r"\brestate\b",
-    ],
-    "clarifying": [
-        r"\bconstraints?\b",
-        r"\bedge cases?\b",
-        r"\binput\b",
-        r"\boutput\b",
-        r"\bwhat if\b",
-        r"\bassume\b",
-        r"\bguaranteed\b",
-        r"\bnull\b",
-        r"\bempty\b",
-        r"\bduplicates?\b",
-        r"\brange\b",
-        r"\blimits?\b",
-    ],
-    "approach": [
-        r"\bidea\b",
-        r"\bapproach\b",
-        r"\bplan\b",
-        r"\bstrategy\b",
-        r"\bwe can\b",
-        r"\bi think we\b",
-        r"\blet's\b",
-        r"\b(two pointers|hash map|hashmap|stack|queue|bfs|dfs|dp|dynamic programming|greedy|binary search|heap|priority queue|union find|trie)\b",
-    ],
-    "complexity": [
-        r"\bO\(",
-        r"\bbig[- ]o\b",
-        r"\btime complexity\b",
-        r"\bspace complexity\b",
-        r"\blinear\b",
-        r"\bconstant\b",
-        r"\bn log n\b",
-        r"\blogarithmic\b",
-    ],
-    "coding": [
-        r"\blet me (code|implement|write)\b",
-        r"\bi('ll| will) (code|implement|write)\b",
-        r"\bwriting (the )?code\b",
-        r"\bfunction\b",
-        r"\bclass\b",
-        r"\breturn\b",
-        r"\binitialize\b",
-        r"\bloop\b",
-    ],
-    "debug": [
-        r"\bdebug\b",
-        r"\bbug\b",
-        r"\berror\b",
-        r"\bexception\b",
-        r"\bfail(s|ed)?\b",
-        r"\bdoes(n't| not)\b work\b",
-        r"\boff[- ]by[- ]one\b",
-        r"\bfix\b",
-        r"\bwhy is\b",
-        r"\bwhy does\b",
-    ],
-    "testing": [
-        r"\btest\b",
-        r"\btest case\b",
-        r"\bdry run\b",
-        r"\bwalk through\b",
-        r"\bexample\b",
-        r"\btry this\b",
-    ],
-    "wrapup": [
-        r"\bany questions\b",
-        r"\bfeedback\b",
-        r"\bnext steps\b",
-        r"\bwrap up\b",
-        r"\bthank(s| you)\b",
-        r"\bgreat job\b",
-    ],
-}
-
-
 def classify_turn(text: str) -> str:
     tx = text.lower()
     scores: Dict[str, float] = {}
+    phase_patterns = get_phase_patterns()
 
     def add_score(phase: str, amount: float) -> None:
         scores[phase] = scores.get(phase, 0.0) + amount
@@ -253,7 +288,7 @@ def classify_turn(text: str) -> str:
         add_score("clarifying", 0.7 * q_count)
         add_score("testing", 0.2 * q_count)
 
-    for phase, patterns in PHASE_PATTERNS.items():
+    for phase, patterns in phase_patterns.items():
         for pattern in patterns:
             hits = len(re.findall(pattern, tx))
             if hits:
@@ -349,35 +384,6 @@ def bundle_sections(transcript: str) -> Dict[str, str]:
     return {f"section_{i}": "\n".join(sections[i]).strip() for i in range(1, 6)}
 
 
-SINGLE_PASS_SYSTEM_PROMPT = """
-You are an honest, fair, and consistent technical interview coach.
-
-You are evaluating an ENTRY-LEVEL Software Engineering LeetCode-style interview.
-
-You must evaluate:
-1. Coding quality as demonstrated in the submitted code and interview discussion
-2. Worst-case time complexity
-3. Auxiliary space complexity
-4. Communication skills
-5. Problem-solving skills
-6. Overall score
-7. Pass/fail
-
-Important rules:
-- Be conservative and fair.
-- Do not nitpick minor syntax issues.
-- Do not over-penalize language-specific quirks.
-- Do not invent missing behaviors.
-- Use the transcript sections and code together.
-- Reason from the code actually shown.
-- Report worst-case complexity.
-- For auxiliary space, exclude input storage unless explicitly required.
-- Return VALID JSON ONLY.
-- No markdown.
-- No extra text.
-""".strip()
-
-
 def add_line_numbers(code: str) -> str:
     lines = str(code).splitlines()
     if not lines:
@@ -399,201 +405,6 @@ def build_single_pass_user_prompt(
 Evaluate this ENTRY-LEVEL LeetCode-style interview in ONE PASS.
 
 You must evaluate both the code and the interview communication using the rubric below.
-
-You are given:
-- Problem statement
-- Constraints
-- Programming language
-- Final candidate code
-- Interview transcript split into 5 sections
-
-Use the transcript sections as follows:
-Section 1: Clarifying questions and initial reasoning
-Section 2: High-level solution explanation
-Section 3: Coding discussion
-Section 4: Time and space complexity discussion
-Section 5: Testing and debugging discussion
-
-You must produce:
-- coding_score (1-4)
-- coding_reason
-- worst-case time complexity
-- auxiliary space complexity
-- complexity parameters
-- complexity justification
-- complexity assumptions
-- Communication score (1-4)
-- Communication_reason
-- Problem-solving score (Ps, 1-4)
-- Ps_reason
-- Overall score (1-4)
-- Pass / Fail
-- Feedback
-
-====================
-CODING EVALUATION RUBRIC (1-4)
-====================
-
-4 — Excellent
-- Code matches a strong approach
-- Candidate clearly explains key implementation decisions
-- Candidate adapts logically during implementation
-
-3 — Good
-- Code mostly matches the stated approach
-- Candidate explains most important implementation choices
-- Some gaps, but overall coherent
-
-2 — Fair
-- Code or discussion only partially aligns with the intended approach
-- Candidate needs meaningful guidance or leaves major logic underexplained
-
-1 — Poor
-- Code does not reflect a coherent plan
-- Candidate cannot explain important parts of implementation
-
-Do NOT over-penalize:
-- minor syntax errors
-- small inefficiencies
-- notation quirks
-
-====================
-COMMUNICATION SKILLS RUBRIC (1-4)
-====================
-
-1 — Poor
-- Disorganized or unclear explanations
-- Little to no verbalization of thinking
-
-2 — Fair
-- Some explanation, but inconsistent or vague
-
-3 — Good
-- Generally clear and structured
-- Explains reasoning and intent
-
-4 — Excellent
-- Very clear and concise
-- States what they are about to solve before solving it
-
-====================
-PROBLEM-SOLVING SKILLS RUBRIC (1-4)
-====================
-
-1 — Poor
-- No coherent strategy
-- Unable to recover from confusion
-
-2 — Fair
-- Partial or inefficient approach
-- Needs significant guidance
-
-3 — Good
-- Reasonable and correct approach
-- Handles most cases
-
-4 — Excellent
-- Strong conceptual understanding
-- Anticipates issues and debugs logically
-
-====================
-INTERVIEW EXPECTATIONS
-====================
-
-Section 1 — Clarifying questions and initial reasoning
-Strong:
-- Restates the problem in their own words
-- Asks clarifying questions about constraints or edge cases
-- Verbalizes initial thoughts before committing
-
-Weak:
-- Jumps directly into coding without framing
-- Asks no clarifying questions when ambiguity exists
-- Seems unsure what the problem is asking
-
-Section 2 — High-level solution explanation
-Strong:
-- Clearly explains the approach before coding
-- Explains why the approach works
-- Mentions relevant data structures or patterns
-
-Weak:
-- Vague or incomplete explanation
-- Explains while coding instead of beforehand
-- Plan is difficult to follow or poorly justified
-
-Section 3 — Coding discussion
-Evaluate:
-- Whether code matches the stated approach
-- Whether the candidate explains key parts of code
-- Whether the candidate adapts during implementation
-
-Section 4 — Complexity discussion
-Evaluate:
-- Whether the candidate’s explanation aligns with the code
-- Whether complexity is explained in plain language
-- Whether complexity connects back to the approach
-
-Section 5 — Testing and debugging
-Strong:
-- Walks through example inputs
-- Identifies bugs logically and fixes them
-- Explains what went wrong and why
-
-Weak:
-- No real reasoning about correctness
-- Random trial-and-error debugging
-- Cannot explain why a fix works
-
-====================
-OVERALL SCORE CALCULATION
-====================
-
-Use EXACTLY these rules:
-
-The overall score will be the average of the coding, communication, and problem solving score.
-
-Round it to one demical point. If it ends in x.0, make sure to include the .0
-
-====================
-PASS / FAIL
-====================
-
-PASS if ALL are true:
-- Overall >= 3
-- Communication >= 3
-- Ps >= 3
-- coding_score >= 3
-
-FAIL otherwise.
-
-====================
-COMPLEXITY REQUIREMENTS
-====================
-
-1. Determine the worst-case time complexity in Big-O.
-2. Determine the auxiliary space complexity in Big-O.
-3. Define the parameters used.
-4. Justify complexity by referencing specific code structures.
-5. State assumptions explicitly.
-
-Do NOT discuss test pass rate.
-Do NOT speculate beyond the code shown.
-Use worst-case reasoning.
-
-====================
-WRITTEN FEEDBACK REQUIREMENTS
-====================
-
-Use EXACTLY this structure:
-
-"You did really well at [specific strength].
-
-There’s room to improve your [specific area to improve]."
-
-====================
-INPUTS
-====================
 
 [PROBLEM]
 {problem_statement}
@@ -621,29 +432,6 @@ INPUTS
 
 [SECTION 5]
 {transcript_sections.get("section_5", "")}
-
-====================
-OUTPUT JSON SCHEMA
-====================
-
-{{
-  "coding_score": <integer 1-4>,
-  "coding_reason": "<=150 chars",
-  "time": "<Big-O string>",
-  "space_aux": "<Big-O string>",
-  "parameters": ["<parameter defs>"],
-  "complexity_justification": "<=150 chars",
-  "complexity_assumptions": ["<assumption>", "..."],
-  "Communication": <integer 1-4>,
-  "Communication_reason": "<=150 chars",
-  "Ps": <integer 1-4>,
-  "Ps_reason": "<=150 chars",
-  "Overall": <float 1-4>,
-  "Pass": <true|false>,
-  "Feedback": "<=220 chars"
-}}
-
-Return JSON only.
 """.strip()
 
 
@@ -654,8 +442,10 @@ def _require_keys(obj: JsonDict, keys: List[str]) -> None:
 
 
 def _ensure_score(name: str, value: Any) -> None:
+    if not isinstance(value, (int, float)):
+        raise ValueError(f"{name} must be numeric.")
     if value < 1 or value > 4:
-        raise ValueError(f"{name} must be an integer 1-4. Got: {value}")
+        raise ValueError(f"{name} must be between 1 and 4. Got: {value}")
 
 
 def _ensure_str(name: str, value: Any, max_len: Optional[int] = None) -> None:
@@ -711,21 +501,6 @@ def validate_single_pass_result(result: JsonDict) -> None:
     ps = result["Ps"]
     coding = result["coding_score"]
     overall = result["Overall"]
-    scores = [comm, ps, coding]
-
-    if (scores.count(4) == 3) or (scores.count(4) == 2 and scores.count(3) == 1):
-        expected_overall = 4
-    elif comm >= 3 and ps >= 3 and coding >= 3:
-        expected_overall = 3
-    elif 2 in scores:
-        expected_overall = 2
-    else:
-        expected_overall = 1
-
-#    if overall != expected_overall:
-#        raise ValueError(
-#            f"Overall score violates rubric rules. Expected {expected_overall}, got {overall}."
-#        )
 
     expected_pass = overall >= 3 and comm >= 3 and ps >= 3 and coding >= 3
     if result["Pass"] != expected_pass:
@@ -757,7 +532,7 @@ class SinglePassInterviewEvaluator:
     ) -> JsonDict:
         sections = self.section_transcript(transcript)
 
-        system_prompt = SINGLE_PASS_SYSTEM_PROMPT
+        system_prompt = get_single_pass_system_prompt()
         user_prompt = build_single_pass_user_prompt(
             problem_statement=problem_statement,
             constraints=constraints,
@@ -771,62 +546,24 @@ class SinglePassInterviewEvaluator:
         return result
 
 
-if __name__ == "__main__":
-    llm = OpenAILLM(model="gpt-5.2")
+def evaluate_interview(
+    transcript: str,
+    code: str,
+    problem_statement: str,
+    constraints: str,
+    language: str,
+    model: str = "gpt-5.2",
+) -> JsonDict:
+    """
+    Call this at request time.
+    Do not create OpenAILLM or evaluator globally.
+    """
+    llm = OpenAILLM(model=model)
     evaluator = SinglePassInterviewEvaluator(llm)
-
-    problem_statement = """
-    Given an array of integers nums and an integer target, return indices of the two numbers
-    such that they add up to target. You may assume exactly one solution, and you may not use
-    the same element twice.
-    """
-
-    constraints = "2 <= len(nums) <= 10^4"
-
-    language = "python"
-
-    transcript = """
-    Interviewer: Hi, thanks for joining.
-    Candidate: Thanks for having me.
-    Interviewer: Given an array of integers and a target, return the indices of two numbers that sum to the target.
-    Candidate: Just to clarify, there is exactly one valid answer, and I cannot use the same index twice, right?
-    Interviewer: Correct.
-    Candidate: Okay, great. So my first thought is the brute-force approach where I check every pair, which would be quadratic.
-    Candidate: A better approach is to use a hash map. As I iterate through the array, I can check whether target minus the current value has already been seen.
-    Candidate: If it has, I return the stored index and the current index. Otherwise, I store the current value and its index.
-    Candidate: This works because for each number x, I only need to know whether the complement target - x appeared earlier.
-    Candidate: I’ll go ahead and write that.
-    Candidate: I’m creating a dictionary called seen.
-    Candidate: Then I loop through nums with enumerate so I have both index and value.
-    Candidate: I compute need = target - x.
-    Candidate: If need is already in seen, I return the pair of indices.
-    Candidate: Otherwise I store seen[x] = i.
-    Candidate: Time complexity is O(n) in the worst case because I scan the array once, assuming average O(1) hash map operations.
-    Candidate: Auxiliary space is O(n) for the hash map in the worst case.
-    Candidate: Let me test it with nums = [2, 7, 11, 15], target = 9.
-    Candidate: At index 0, seen is empty, so I store 2:0.
-    Candidate: At index 1, I need 2, which is already in seen, so I return [0,1].
-    Interviewer: Good. Any edge cases?
-    Candidate: Since the problem guarantees one solution, I don’t need to worry about no-solution handling much, but returning an empty list at the end is still safe.
-    """
-
-    code = """
-    def twoSum(nums, target):
-        seen = {}
-        for i, x in enumerate(nums):
-            need = target - x
-            if need in seen:
-                return [seen[need], i]
-            seen[x] = i
-        return []
-    """
-
-    output = evaluator.evaluate(
+    return evaluator.evaluate(
         transcript=transcript,
         code=code,
         problem_statement=problem_statement,
         constraints=constraints,
         language=language,
     )
-
-    print(json.dumps(output, indent=2))
