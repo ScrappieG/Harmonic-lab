@@ -5,6 +5,7 @@ import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
 import DashboardLayout from './pages/DashboardLayout'
 import DashboardSessionDetail from './pages/DashboardSessionDetail'
+import AuthExtension from './pages/AuthExtension'
 import Home from './pages/Home'
 
 function ScrollToTop() {
@@ -28,6 +29,7 @@ function App() {
           <Route path=":sessionId" element={<DashboardSessionDetail />} />
         </Route>
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/auth/extension" element={<AuthExtension />} />
       </Routes>
     </BrowserRouter>
   )

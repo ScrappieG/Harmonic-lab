@@ -4,7 +4,13 @@
   // ===== DETECT PROBLEM PAGE =====
   var path = window.location.pathname;
   var match = path.match(/^\/problems\/([^/]+)/);
-  if (!match) return; // Not a problem page
+  if (!match) return;
+
+  // ===== CONFIG =====
+  var DASHBOARD_URL = 'https://articuleet.com/dashboard';
+
+  // ===== AUTH STATE =====
+  var authedUser = null;
 
   // ===== GET PROBLEM NAME =====
   function slugToTitle(slug) {
@@ -13,8 +19,8 @@
     }).join(' ');
   }
 
+  // Ret problem name
   function getProblemName() {
-    // Try DOM first — LeetCode renders the title in various ways
     var selectors = [
       '[data-cy="question-title"]',
       '.text-title-large',
@@ -24,15 +30,12 @@
     for (var i = 0; i < selectors.length; i++) {
       var el = document.querySelector(selectors[i]);
       if (el && el.textContent.trim()) {
-        // Strip leading number + period like "1. Two Sum"
         return el.textContent.trim().replace(/^\d+\.\s*/, '');
       }
     }
-    // Fallback: convert URL slug to title
     return slugToTitle(match[1]);
   }
 
-  // Wait briefly for LeetCode SPA to render, then grab name
   var problemName = getProblemName();
 
   function retryName() {
@@ -56,9 +59,20 @@
   host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647;';
   document.body.appendChild(host);
 
+  var userClosed = false;
+
   chrome.runtime.onMessage.addListener(function (msg) {
     if (msg.action === 'toggle') {
-      host.style.display = host.style.display === 'none' ? '' : 'none';
+      if (host.style.display === 'none') {
+        userClosed = false;
+        host.style.display = '';
+      } else {
+        var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
+        if (!isRecording) {
+          userClosed = true;
+          host.style.display = 'none';
+        }
+      }
     }
   });
 
@@ -93,6 +107,20 @@
   }
   injectName();
 
+  // ===== INJECT USER INFO =====
+  function injectUser(user) {
+    var initial = user.email ? user.email.charAt(0).toUpperCase() : '?';
+    root.querySelectorAll('.avatar').forEach(function (el) {
+      el.textContent = initial;
+    });
+    root.querySelectorAll('.user-info .name').forEach(function (el) {
+      el.textContent = user.email.split('@')[0];
+    });
+    root.querySelectorAll('.user-info .email').forEach(function (el) {
+      el.textContent = user.email;
+    });
+  }
+
   // ===== OBSERVE SPA NAVIGATION =====
   var lastPath = path;
   var observer = new MutationObserver(function () {
@@ -104,7 +132,9 @@
         problemName = slugToTitle(newMatch[1]);
         injectName();
         setTimeout(retryName, 1500);
-        host.style.display = '';
+        if (!userClosed) {
+          host.style.display = '';
+        }
       } else {
         host.style.display = 'none';
       }
@@ -114,6 +144,7 @@
 
   // ===== SCREENS =====
   var screens = {
+    login:    root.querySelector('#screen-login'),
     start:    root.querySelector('#screen-start'),
     sec1:     root.querySelector('#screen-section-1'),
     sec2:     root.querySelector('#screen-section-2'),
@@ -134,44 +165,9 @@
     sec5: 'Complexity & Tradeoffs',
   };
 
-  var BACKEND_URL = 'https://articuleet.workers.dev';
-
-  var lastScreen = 'start';
+  var lastScreen = 'login';
   var currentSection = null;
   var micStream = null;
-  var sessionId = null;
-
-  // ===== AUTH =====
-  function getAuthToken() {
-    return new Promise(function (resolve) {
-      chrome.storage.local.get('access_token', function (result) {
-        resolve(result.access_token || null);
-      });
-    });
-  }
-
-  async function apiFetch(path, options) {
-    var token = await getAuthToken();
-    var headers = Object.assign({ 'Authorization': 'Bearer ' + token }, options.headers || {});
-    var res = await fetch(BACKEND_URL + path, Object.assign({}, options, { headers: headers }));
-    if (!res.ok) throw new Error('API error ' + res.status + ': ' + await res.text());
-    return res.json();
-  }
-
-  // ===== GET CODE FROM LEETCODE EDITOR =====
-  function getCode() {
-    if (window.monaco) {
-      var models = window.monaco.editor.getModels();
-      if (models.length > 0) return models[0].getValue();
-    }
-    return '';
-  }
-
-  // ===== GET PROBLEM STATEMENT FROM PAGE =====
-  function getProblemStatement() {
-    var el = document.querySelector('[data-track-load="description_content"]');
-    return el ? el.innerText.trim() : '';
-  }
 
   // ===== PER-SECTION STATE =====
   var sec = {};
@@ -184,15 +180,71 @@
       paused: false,
       recording: false,
       blob: null,
+      skipped: false,
     };
   });
 
-  // ===== SHOW SCREEN =====
+  // ===== CLOSE BUTTON VISIBILITY =====
+  function updateCloseButtons() {
+    var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
+    root.querySelectorAll('.close-btn').forEach(function (btn) {
+      btn.style.display = isRecording ? 'none' : '';
+    });
+  }
+
+  // ===== SHOW/HIDE SECTION UI =====
+  function showActions(key) {
+    var screen = screens[key];
+    var actions = screen.querySelector('.section-actions');
+    var controls = screen.querySelector('.controls');
+    var complete = screen.querySelector('.complete-section-wrap');
+    if (actions) actions.classList.remove('hidden');
+    if (controls) controls.classList.add('hidden');
+    if (complete) complete.classList.add('hidden');
+  }
+
+  function showControls(key) {
+    var screen = screens[key];
+    var actions = screen.querySelector('.section-actions');
+    var controls = screen.querySelector('.controls');
+    var complete = screen.querySelector('.complete-section-wrap');
+    if (actions) actions.classList.add('hidden');
+    if (controls) controls.classList.remove('hidden');
+    if (complete) complete.classList.remove('hidden');
+  }
+
+  // ===== SHOW SCREEN (with auth gate) =====
   function show(key) {
+    if (!authedUser && key !== 'login') {
+      key = 'login';
+    }
+
     if (key !== 'mini') lastScreen = key;
     Object.values(screens).forEach(function (s) { s.classList.remove('active'); });
     screens[key].classList.add('active');
+
+    if (sectionKeys.indexOf(key) !== -1) {
+      if (sec[key].recording) {
+        showControls(key);
+      } else {
+        showActions(key);
+      }
+    }
+
     if (key === 'mini' && currentSection) syncMini();
+    updateCloseButtons();
+  }
+
+  // ===== ADVANCE TO NEXT =====
+  function advanceTo(key) {
+    var i = flow.indexOf(key);
+    if (i === -1 || i >= flow.length - 1) return;
+    var next = flow[i + 1];
+    if (next === 'complete') {
+      updateComplete();
+      releaseMic();
+    }
+    show(next);
   }
 
   // ===== TIMER =====
@@ -255,9 +307,12 @@
       s.recorder.start(1000);
       s.recording = true;
       s.paused = false;
+      s.skipped = false;
       currentSection = key;
       tickStart(key);
+      showControls(key);
       refreshUI(key);
+      updateCloseButtons();
     });
   }
 
@@ -268,6 +323,8 @@
         s.recording = false;
         tickStop(key);
         refreshUI(key);
+        releaseMic();
+        updateCloseButtons();
         resolve();
         return;
       }
@@ -282,6 +339,8 @@
         s.paused = false;
         tickStop(key);
         refreshUI(key);
+        releaseMic();
+        updateCloseButtons();
         resolve();
       }, { once: true });
       s.recorder.stop();
@@ -321,6 +380,26 @@
     return startRec(key);
   }
 
+  function resetSection(key) {
+    var s = sec[key];
+    tickStop(key);
+    if (s.recorder && s.recorder.state !== 'inactive') {
+      s.recorder.ondataavailable = null;
+      s.recorder.stop();
+    }
+    s.seconds = 0;
+    s.interval = null;
+    s.recorder = null;
+    s.chunks = [];
+    s.paused = false;
+    s.recording = false;
+    s.blob = null;
+    s.skipped = false;
+    updateTimer(key);
+    refreshUI(key);
+    showActions(key);
+  }
+
   // ===== UI UPDATES =====
   function refreshUI(key) {
     var s = sec[key];
@@ -355,6 +434,172 @@
     if (miniTimer) miniTimer.textContent = fmt(s.seconds);
   }
 
+  // ===== FEEDBACK =====
+  function updateFeedback(data) {
+    function renderDots(id, score, max) {
+      var el = root.querySelector('#' + id);
+      if (!el) return;
+      var html = '';
+      for (var i = 1; i <= max; i++) {
+        html += i <= score
+          ? '<span class="dot-filled"></span>'
+          : '<span class="dot-empty"></span>';
+      }
+      el.innerHTML = html;
+    }
+
+    var comm = data.Communication || 0;
+    var ps   = data.Ps || 0;
+    var code = data.code || 0;
+
+    renderDots('fb-communication', comm, 4);
+    renderDots('fb-ps', ps, 4);
+    renderDots('fb-code', code, 4);
+
+    var overall = Math.round((comm + ps + code) / 3);
+    renderDots('fb-overall', overall, 4);
+
+    var badge = root.querySelector('#fb-pass-fail');
+    if (badge) {
+      if (data.Pass === true) {
+        badge.textContent = 'PASS';
+        badge.className = 'pass-fail-badge pass';
+      } else if (data.Pass === false) {
+        badge.textContent = 'FAIL';
+        badge.className = 'pass-fail-badge fail';
+      } else {
+        badge.textContent = '—';
+        badge.className = 'pass-fail-badge';
+      }
+    }
+
+    var takeaway = root.querySelector('#fb-takeaway');
+    if (takeaway) {
+      takeaway.textContent = data.overall_takeaway || '';
+    }
+  }
+
+  function resetFeedback() {
+    ['fb-communication', 'fb-ps', 'fb-code', 'fb-overall'].forEach(function (id) {
+      var el = root.querySelector('#' + id);
+      if (el) {
+        el.innerHTML =
+          '<span class="dot-empty"></span>' +
+          '<span class="dot-empty"></span>' +
+          '<span class="dot-empty"></span>' +
+          '<span class="dot-empty"></span>';
+      }
+    });
+    var badge = root.querySelector('#fb-pass-fail');
+    if (badge) {
+      badge.textContent = '—';
+      badge.className = 'pass-fail-badge';
+    }
+    var takeaway = root.querySelector('#fb-takeaway');
+    if (takeaway) takeaway.textContent = '';
+  }
+
+  // ===== AUTH (local only — no backend needed) =====
+  function getAuthToken() {
+    return new Promise(function (resolve, reject) {
+      chrome.storage.local.get('access_token', function (result) {
+        if (result.access_token) {
+          resolve(result.access_token);
+        } else {
+          reject(new Error('No auth token'));
+        }
+      });
+    });
+  }
+
+  // Decode the JWT payload to get user info without calling backend
+  function decodeJwtPayload(token) {
+    try {
+      var base64 = token.split('.')[1];
+      var json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function validateTokenLocally(token) {
+    var payload = decodeJwtPayload(token);
+    if (!payload) return null;
+
+    // Check if token is expired
+    var now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) return null;
+
+    return {
+      id: payload.sub || '',
+      email: payload.email || '',
+    };
+  }
+
+  function onAuthSuccess(user) {
+    authedUser = user;
+    injectUser(user);
+    show('start');
+    console.log('[articuLeet] Signed in as ' + user.email);
+  }
+
+  function onAuthFail() {
+    authedUser = null;
+    chrome.storage.local.remove('access_token');
+    show('login');
+  }
+
+  function checkAuth() {
+    getAuthToken()
+      .then(function (token) {
+        var user = validateTokenLocally(token);
+        if (user) {
+          onAuthSuccess(user);
+        } else {
+          onAuthFail();
+        }
+      })
+      .catch(function () {
+        onAuthFail();
+      });
+  }
+
+  // Listen for token arriving from website after OAuth
+  chrome.storage.onChanged.addListener(function (changes, area) {
+    if (area === 'local' && changes.access_token && changes.access_token.newValue) {
+      var user = validateTokenLocally(changes.access_token.newValue);
+      if (user) {
+        onAuthSuccess(user);
+      } else {
+        onAuthFail();
+      }
+    }
+  });
+
+  // ===== DOWNLOAD RECORDINGS (testing only) =====
+  function downloadRecordings() {
+    sectionKeys.forEach(function (key) {
+      var s = sec[key];
+      if (!s.blob) return;
+
+      var url = URL.createObjectURL(s.blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    });
+
+    console.log('[articuLeet] Downloaded all recorded sections');
+  }
+
+  // ===== COMPLETE (mock feedback — no backend) =====
   function updateComplete() {
     var total = 0;
     var done = 0;
@@ -381,39 +626,52 @@
       timesEl.innerHTML = sectionKeys.map(function (key) {
         var s = sec[key];
         var status = s.blob ? 'recorded' : 'skipped';
+        var label = s.blob ? fmt(s.seconds) : 'Skipped';
         return '<div class="section-time-row">' +
           '<span>' + sectionNames[key] + '</span>' +
-          '<span class="mono ' + status + '">' + fmt(s.seconds) + '</span>' +
+          '<span class="mono ' + status + '">' + label + '</span>' +
           '</div>';
       }).join('');
     }
+
+    // Mock feedback — replace with real API call when backend is deployed
+    console.log('[articuLeet] Session complete (' + done + '/5 sections, ' + fmt(total) + ' total)');
+    console.log('[articuLeet] Backend not connected — showing mock feedback');
+
+    updateFeedback({
+      Communication: 3,
+      Communication_reason: 'Clear explanation of constraints and edge cases.',
+      Ps: 3,
+      Ps_reason: 'Chose optimal hashmap approach quickly.',
+      code: 2,
+      code_reason: 'Minor variable naming issues.',
+      Pass: true,
+      overall_takeaway: 'Solid walkthrough — tighten up variable naming and narrate edge-case handling earlier.'
+    });
   }
 
   function resetAll() {
     sectionKeys.forEach(function (key) {
-      var s = sec[key];
-      tickStop(key);
-      if (s.recorder && s.recorder.state !== 'inactive') {
-        s.recorder.ondataavailable = null;
-        s.recorder.stop();
-      }
-      s.seconds = 0;
-      s.interval = null;
-      s.recorder = null;
-      s.chunks = [];
-      s.paused = false;
-      s.recording = false;
-      s.blob = null;
-      updateTimer(key);
-      refreshUI(key);
+      resetSection(key);
     });
     releaseMic();
     currentSection = null;
+    resetFeedback();
+    updateCloseButtons();
   }
 
   // ===== WIRE UP SECTION BUTTONS =====
-  sectionKeys.forEach(function (key) {
+  sectionKeys.forEach(function (key, index) {
     var screen = screens[key];
+
+    screen.querySelector('.start-sec-btn').addEventListener('click', function () {
+      startRec(key);
+    });
+
+    screen.querySelector('.skip-btn').addEventListener('click', function () {
+      sec[key].skipped = true;
+      advanceTo(key);
+    });
 
     screen.querySelector('.stop-btn').addEventListener('click', function () {
       if (sec[key].recording) {
@@ -432,27 +690,24 @@
     });
 
     screen.querySelector('.next-btn').addEventListener('click', function () {
-      var advance = function () {
-        var i = flow.indexOf(key);
-        if (i === -1 || i >= flow.length - 1) return;
-        var next = flow[i + 1];
-        show(next);
-        if (sectionKeys.indexOf(next) !== -1) {
-          startRec(next);
-        } else if (next === 'complete') {
-          updateComplete();
-          releaseMic();
-        }
-      };
       if (sec[key].recording) {
-        stopRec(key).then(advance);
+        stopRec(key).then(function () { advanceTo(key); });
       } else {
-        advance();
+        advanceTo(key);
       }
     });
+
+    var redoBtn = screen.querySelector('.redo-btn');
+    if (redoBtn && index > 0) {
+      redoBtn.addEventListener('click', function () {
+        var prevKey = sectionKeys[index - 1];
+        resetSection(prevKey);
+        show(prevKey);
+      });
+    }
   });
 
-  // ===== MINI BAR BUTTONS =====
+  // ===== MINI BAR =====
   var mini = screens.mini;
 
   mini.querySelector('.stop-btn').addEventListener('click', function () {
@@ -472,126 +727,41 @@
     if (currentSection) restartRec(currentSection);
   });
 
-  mini.querySelector('.next-btn').addEventListener('click', function () {
-    if (!currentSection) return;
-    var key = currentSection;
-    var advance = function () {
-      var i = flow.indexOf(key);
-      if (i === -1 || i >= flow.length - 1) return;
-      var next = flow[i + 1];
-      show(next);
-      if (sectionKeys.indexOf(next) !== -1) {
-        startRec(next);
-      } else if (next === 'complete') {
-        updateComplete();
-        releaseMic();
-      }
-    };
-    if (sec[key].recording) {
-      stopRec(key).then(advance);
-    } else {
-      advance();
+    // ===== DOWNLOAD RECORDINGS (testing only) =====
+    function downloadRecordings() {
+      sectionKeys.forEach(function (key) {
+        var s = sec[key];
+        if (!s.blob) return;
+  
+        var url = URL.createObjectURL(s.blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+  
+        // Clean up the object URL after a short delay
+        setTimeout(function () {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      });
+  
+      console.log('[articuLeet] Downloaded all recorded sections');
     }
-  });
 
   // ===== NAV BUTTONS =====
-  root.querySelector('#btn-start-recording').addEventListener('click', async function () {
-    try {
-      var session = await apiFetch('/sessions/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ problem_name: problemName, problem_url: window.location.href }),
-      });
-      sessionId = session.id;
-    } catch (e) {
-      console.warn('[articuLeet] Could not create session:', e);
-    }
+  root.querySelector('#btn-start-recording').addEventListener('click', function () {
     show('sec1');
-    startRec('sec1');
   });
 
   root.querySelector('#btn-new-session').addEventListener('click', function () {
     resetAll();
-    sessionId = null;
     show('start');
   });
 
-  // ===== TRANSCRIBE & ANALYZE =====
-  root.querySelector('#btn-view-analysis').addEventListener('click', async function () {
-    if (!sessionId) {
-      console.warn('[articuLeet] No session ID — was start recording called?');
-      return;
-    }
-
-    var btn = root.querySelector('#btn-view-analysis');
-    btn.textContent = 'Analyzing…';
-    btn.disabled = true;
-
-    try {
-      // 1. Transcribe each recorded section sequentially
-      var transcriptParts = [];
-      for (var i = 0; i < sectionKeys.length; i++) {
-        var key = sectionKeys[i];
-        if (!sec[key].blob) continue;
-        var formData = new FormData();
-        formData.append('audio', sec[key].blob, key + '.webm');
-        var token = await getAuthToken();
-        var res = await fetch(BACKEND_URL + '/transcribe', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + token },
-          body: formData,
-        });
-        if (!res.ok) throw new Error('Transcribe failed for ' + key);
-        var data = await res.json();
-        if (data.text) {
-          transcriptParts.push('[' + sectionNames[key] + ']: ' + data.text);
-        }
-      }
-
-      var fullTranscript = transcriptParts.join('\n\n');
-      var code = getCode();
-      var problemStatement = getProblemStatement();
-
-      // 2. Analyze
-      var analysis = await apiFetch('/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transcript: fullTranscript, problem: problemName, code: code }),
-      });
-
-      // 3. Save everything to DB in parallel
-      var totalSeconds = sectionKeys.reduce(function (sum, k) { return sum + sec[k].seconds; }, 0);
-      await Promise.all([
-        apiFetch('/sessions/details', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: sessionId,
-            transcript: fullTranscript,
-            code: code,
-            problem_statement: problemStatement,
-          }),
-        }),
-        apiFetch('/sessions/score', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(Object.assign({ session_id: sessionId }, analysis)),
-        }),
-        apiFetch('/sessions/finish', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ session_id: sessionId, total_time: totalSeconds }),
-        }),
-      ]);
-
-      btn.textContent = 'View Full Analysis';
-      btn.disabled = false;
-      // TODO: open dashboard/results page
-    } catch (e) {
-      console.error('[articuLeet] Analysis failed:', e);
-      btn.textContent = 'Try Again';
-      btn.disabled = false;
-    }
+  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+    downloadRecordings();
   });
 
   root.querySelector('#btn-expand-mini').addEventListener('click', function () {
@@ -610,7 +780,34 @@
 
   root.querySelectorAll('.close-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      host.style.display = 'none';
+      var isRecording = currentSection && sec[currentSection] && sec[currentSection].recording;
+      if (!isRecording) {
+        userClosed = true;
+        host.style.display = 'none';
+      }
     });
   });
+
+  // ===== LOGIN BUTTON =====
+  root.querySelector('#btn-google-signin').addEventListener('click', function () {
+    window.open('https://articuleet.com/auth/extension', '_blank');
+  });
+
+  // ===== DASHBOARD BUTTONS =====
+  root.querySelectorAll('.btn-outline').forEach(function (btn) {
+    if (btn.textContent.trim() === 'View Dashboard' || btn.textContent.trim() === 'View Full Analysis') {
+      btn.addEventListener('click', function () {
+        window.open(DASHBOARD_URL, '_blank');
+      });
+    }
+  });
+
+  // ===== DOWNLOAD BUTTON =====
+  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+    downloadRecordings();
+  });
+
+  // ===== INIT =====
+  updateCloseButtons();
+  checkAuth();
 })();
