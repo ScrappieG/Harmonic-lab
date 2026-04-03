@@ -31,7 +31,7 @@ type ProblemDetailsRow = {
   problem_statement: string | null
 }
 
-type DashboardHomeData = {
+export type DashboardHomeData = {
   signedIn: boolean
   stats: DashboardStats
   trend: SessionTrendPoint[]
