@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ReferenceArea, ReferenceLine, XAxis, YAxis } from 'recharts'
 
 import SessionList from '@/components/dashboard/SessionList'
-import type { DashboardStats, SessionListItem, SessionTrendPoint } from '@/components/dashboard/types'
+import type { DashboardStats, SessionTrendPoint } from '@/components/dashboard/types'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
-import { fetchDashboardHomeData } from '@/lib/dashboardData'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { supabase } from '@/lib/supabase'
+import { useDashboardLayoutContext } from './DashboardLayout'
 
 const chartConfig = {
   score: {
@@ -15,13 +18,29 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 
-const dashboardShellClass = 'mx-auto w-full max-w-5xl px-6 lg:px-8'
-
 const emptyStats: DashboardStats = {
   sessions: 0,
   avgScore: 0,
   maxScore: 4,
   totalMinutes: 0,
+}
+
+const revealUp: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.4 },
+  },
+}
+
+const staggerContainer: Variants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
 }
 
 async function signInWithGoogle() {
@@ -31,213 +50,297 @@ async function signInWithGoogle() {
   })
 }
 
-function Dashboard() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isSignedIn, setIsSignedIn] = useState(false)
-  const [stats, setStats] = useState<DashboardStats>(emptyStats)
-  const [trend, setTrend] = useState<SessionTrendPoint[]>([])
-  const [sessionItems, setSessionItems] = useState<SessionListItem[]>([])
+function DashboardHomeSkeleton() {
+  return (
+    <>
+      <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-7" aria-hidden="true">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div key={`dashboard-stat-skeleton-${index}`}>
+            <Skeleton className="h-3 w-20 rounded-sm" />
+            <Skeleton className="mt-3 h-8 w-24 md:h-9" />
+          </div>
+        ))}
+      </div>
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
+      <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] dark:border-stone-800 dark:bg-stone-900/80 dark:shadow-none sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="mt-4 h-44 w-full rounded-xl md:h-48" />
+      </article>
 
-    try {
-      const data = await fetchDashboardHomeData()
-      setIsSignedIn(data.signedIn)
-      setStats(data.stats)
-      setTrend(data.trend)
-      setSessionItems(data.sessions)
-    } catch (loadError) {
-      const message = loadError instanceof Error ? loadError.message : 'Failed to load dashboard.'
-      setError(message)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
+      <section
+        className="mt-6 overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/75 md:mt-7"
+        aria-hidden="true"
+      >
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={`dashboard-row-skeleton-${index}`}
+            className={`flex items-center justify-between gap-3 px-4 py-4 sm:px-5 ${index < 3 ? 'border-b border-stone-300/90 dark:border-stone-800' : ''}`}
+          >
+            <div className="min-w-0 flex-1">
+              <Skeleton className="h-5 w-3/5 max-w-64" />
+              <Skeleton className="mt-2 h-4 w-28" />
+            </div>
+            <div className="ml-3 flex shrink-0 items-center gap-3 sm:gap-4">
+              <Skeleton className="h-2 w-11 rounded-full" />
+              <Skeleton className="h-5 w-8" />
+            </div>
+          </div>
+        ))}
+      </section>
+    </>
+  )
+}
+
+function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
+  const reduceMotion = useReducedMotion() ?? false
+  const [chartKey, setChartKey] = useState(0)
+  const [isChartReady, setIsChartReady] = useState(false)
+  const trendSignature = trend.map(({ date, score }) => `${date}:${score}`).join('|')
 
   useEffect(() => {
-    loadDashboard()
+    if (trend.length === 0) {
+      setIsChartReady(false)
+      return
+    }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      loadDashboard()
+    setIsChartReady(false)
+    const animationFrame = window.requestAnimationFrame(() => {
+      setChartKey((currentKey) => currentKey + 1)
+      setIsChartReady(true)
     })
 
     return () => {
-      subscription.unsubscribe()
+      window.cancelAnimationFrame(animationFrame)
     }
-  }, [loadDashboard])
+  }, [trend.length, trendSignature])
+
+  if (!isChartReady) {
+    return <Skeleton className="mt-4 h-44 w-full rounded-xl md:h-48" aria-hidden="true" />
+  }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-stone-100 via-stone-100 to-stone-200/45">
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-16 left-1/2 h-56 w-[46rem] -translate-x-1/2 rounded-full bg-stone-50/70 blur-3xl" />
-        <div className="absolute right-0 top-40 h-64 w-64 rounded-full bg-stone-200/55 blur-3xl" />
-      </div>
+    <div className="mt-4 h-44 w-full md:h-48">
+      <ChartContainer config={chartConfig} className="h-full w-full">
+        <AreaChart
+          key={`dashboard-trend-chart-${chartKey}`}
+          accessibilityLayer
+          data={trend}
+          margin={{ top: 18, right: 12, left: -14, bottom: 4 }}
+        >
+          <defs>
+            <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.2 : 0.14}>
+                {!reduceMotion ? (
+                  <animate
+                    attributeName="stop-opacity"
+                    values="0.14;0.42;0.14"
+                    dur="3900ms"
+                    repeatCount="indefinite"
+                    calcMode="spline"
+                    keyTimes="0;0.5;1"
+                    keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                  />
+                ) : null}
+              </stop>
+              <stop offset="100%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.14 : 0.1}>
+                {!reduceMotion ? (
+                  <animate
+                    attributeName="stop-opacity"
+                    values="0.08;0.12;0.08"
+                    dur="3900ms"
+                    repeatCount="indefinite"
+                    calcMode="spline"
+                    keyTimes="0;0.5;1"
+                    keySplines="0.42 0 0.58 1;0.42 0 0.58 1"
+                  />
+                ) : null}
+              </stop>
+            </linearGradient>
+          </defs>
+          {trend.length === 1 ? (
+            <>
+              <ReferenceArea y1={0} y2={trend[0].score} fill="url(#scoreFill)" fillOpacity={1} />
+              <ReferenceLine
+                y={trend[0].score}
+                stroke="var(--color-score)"
+                strokeOpacity={0.55}
+                strokeWidth={1.8}
+              />
+            </>
+          ) : null}
+          <CartesianGrid vertical={false} stroke="rgb(214 211 209)" strokeDasharray="4 4" />
+          <XAxis
+            dataKey="date"
+            axisLine={false}
+            tickLine={false}
+            tickMargin={10}
+            interval={0}
+            className="text-xs text-stone-500 dark:text-stone-400"
+          />
+          <YAxis
+            domain={[0, 4]}
+            ticks={[0, 2, 4]}
+            axisLine={false}
+            tickLine={false}
+            tickMargin={8}
+            className="text-xs text-stone-500 dark:text-stone-400"
+          />
+          <ChartTooltip cursor={false} content={<ChartTooltipContent labelKey="date" />} />
+          <Area
+            dataKey="score"
+            type="monotone"
+            fill="url(#scoreFill)"
+            fillOpacity={1}
+            stroke="var(--color-score)"
+            strokeWidth={1.8}
+            isAnimationActive
+            animationBegin={0}
+            animationDuration={900}
+            animationEasing="ease-out"
+            dot={{ r: 3.2, fill: 'var(--color-score)', stroke: 'var(--color-score)' }}
+            activeDot={{ r: 4, fill: 'var(--color-score)' }}
+          />
+        </AreaChart>
+      </ChartContainer>
+    </div>
+  )
+}
 
-      <header className="relative z-10 border-b border-stone-200/90 bg-stone-100/88 backdrop-blur-sm">
-        <nav className={`${dashboardShellClass} flex items-center py-2.5`}>
-          <Link to="/" className="text-lg leading-none tracking-tight text-stone-900">
-            <span className="brand-serif">articu</span>
-            <span className="brand-mono">Leet</span>
-          </Link>
+function Dashboard() {
+  const reduceMotion = useReducedMotion() ?? false
+  const { dashboardData, isLoading, error, reloadDashboard } = useDashboardLayoutContext()
+  const isSignedIn = dashboardData?.signedIn ?? false
+  const stats = dashboardData?.stats ?? emptyStats
+  const trend = dashboardData?.trend ?? []
+  const sessionItems = dashboardData?.sessions ?? []
+  const isRefreshing = isLoading && Boolean(dashboardData)
 
+  return (
+    <section className="w-full">
+      <motion.h1
+        className="brand-serif text-xl leading-none tracking-tight text-stone-900 dark:text-stone-100 sm:text-2xl md:text-3xl"
+        initial={reduceMotion ? false : 'hidden'}
+        animate={reduceMotion ? undefined : 'visible'}
+        variants={reduceMotion ? undefined : revealUp}
+      >
+        Your Dashboard
+      </motion.h1>
+
+      {isLoading && !dashboardData ? (
+        <DashboardHomeSkeleton />
+      ) : error && !dashboardData ? (
+        <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 dark:border-rose-900/70 dark:bg-rose-950/50 md:p-6">
+          <h2 className="brand-serif text-2xl leading-none text-rose-900 md:text-3xl">Could not load dashboard</h2>
+          <p className="mt-2 text-sm text-rose-800 dark:text-rose-200">{error}</p>
           <button
             type="button"
-            className="ml-auto rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
+            onClick={reloadDashboard}
+            className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200 dark:border-rose-800 dark:bg-rose-900/50 dark:text-rose-100 dark:hover:bg-rose-900/70"
           >
-            Account
+            Retry
           </button>
-        </nav>
-      </header>
-
-      <main className={`${dashboardShellClass} relative z-10 py-7 md:py-9`}>
-        <section className="w-full">
-          <h1 className="brand-serif text-xl leading-none tracking-tight text-stone-900 sm:text-2xl md:text-3xl">
-            Your Sessions
-          </h1>
-
-          {isLoading ? (
-            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 text-stone-600 md:p-6">
-              Loading your dashboard...
-            </section>
-          ) : error ? (
-            <section className="mt-6 rounded-2xl border border-rose-200 bg-rose-50/80 p-5 md:p-6">
-              <h2 className="brand-serif text-2xl leading-none text-rose-900 md:text-3xl">Could not load dashboard</h2>
-              <p className="mt-2 text-sm text-rose-800">{error}</p>
-              <button
-                type="button"
-                onClick={loadDashboard}
-                className="mt-4 rounded-md border border-rose-300 bg-rose-100 px-3.5 py-1.5 text-xs font-medium text-rose-900 transition-colors hover:bg-rose-200"
-              >
-                Retry
-              </button>
-            </section>
-          ) : !isSignedIn ? (
-            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-              <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">Sign in to view your sessions</h2>
-              <p className="mt-2 text-base text-stone-600 md:text-lg">
-                Your dashboard will appear here once you sign in with Google.
+        </section>
+      ) : !isSignedIn ? (
+        <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 dark:border-stone-800 dark:bg-stone-900/75 md:p-6">
+          <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">Sign in to view your sessions</h2>
+          <p className="mt-2 text-base text-stone-600 dark:text-stone-400 md:text-lg">
+            Your dashboard will appear here once you sign in with Google.
+          </p>
+          <button
+            type="button"
+            onClick={signInWithGoogle}
+            className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100 dark:hover:bg-stone-700"
+          >
+            Sign in
+          </button>
+        </section>
+      ) : (
+        <>
+          <motion.div
+            className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-7"
+            initial={reduceMotion ? false : 'hidden'}
+            animate={reduceMotion ? undefined : 'visible'}
+            variants={reduceMotion ? undefined : staggerContainer}
+          >
+            <motion.div variants={reduceMotion ? undefined : revealUp}>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Sessions</p>
+              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 dark:text-stone-100 md:text-3xl">
+                {stats.sessions}
               </p>
-              <button
-                type="button"
-                onClick={signInWithGoogle}
-                className="mt-4 rounded-md border border-stone-300 bg-stone-50 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition-colors hover:bg-stone-200"
-              >
-                Sign in
-              </button>
-            </section>
-          ) : (
-            <>
-              <div className="mt-6 grid grid-cols-2 gap-5 md:grid-cols-3 md:gap-7">
-                <div>
-                  <p className="text-xs text-stone-500">Sessions</p>
-                  <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 md:text-3xl">
-                    {stats.sessions}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-stone-500">Average Score</p>
-                  <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 md:text-3xl">
-                    <span>{stats.avgScore.toFixed(1)}</span>
-                    <span className="ml-1.5 text-lg text-stone-500 md:text-xl">/ {stats.maxScore}</span>
-                  </p>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <p className="text-xs text-stone-500">Total Time ArticuLeeted</p>
-                  <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 md:text-3xl">
-                    {stats.totalMinutes}m
-                  </p>
-                </div>
-              </div>
+            </motion.div>
+            <motion.div variants={reduceMotion ? undefined : revealUp}>
+              <p className="text-xs text-stone-500 dark:text-stone-400">Average Score</p>
+              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 dark:text-stone-100 md:text-3xl">
+                <span>{stats.avgScore.toFixed(1)}</span>
+                <span className="ml-1.5 text-lg text-stone-500 dark:text-stone-400 md:text-xl">/ {stats.maxScore}</span>
+              </p>
+            </motion.div>
+            <motion.div variants={reduceMotion ? undefined : revealUp} className="col-span-2 md:col-span-1">
+              <p className="text-xs text-stone-500 dark:text-stone-400">Total Time ArticuLeeted</p>
+              <p className="brand-serif mt-1.5 text-2xl leading-none font-normal text-stone-900 dark:text-stone-100 md:text-3xl">
+                {stats.totalMinutes}m
+              </p>
+            </motion.div>
+          </motion.div>
 
-              {sessionItems.length === 0 && (
-                <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 md:p-6">
-                  <h2 className="brand-serif text-2xl leading-none text-stone-800 md:text-3xl">No sessions yet</h2>
-                  <p className="mt-2 text-base text-stone-600 md:text-lg">
-                    Complete your first interview session and it will appear here.
-                  </p>
-                </section>
-              )}
-
-              <article className="mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6">
-                <p className="brand-serif text-lg leading-none text-stone-600 md:text-xl">Last 5 sessions</p>
+          {sessionItems.length > 0 ? (
+            <motion.article
+              className="dashboard-hover-card mt-8 rounded-2xl border border-stone-300/90 bg-stone-50/85 px-4 pb-4 pt-5 shadow-[0_1px_0_rgba(0,0,0,0.02)] dark:border-stone-800 dark:bg-stone-900/80 dark:shadow-none sm:px-5 sm:pb-5 md:mt-10 md:px-6 md:pb-6"
+              initial={reduceMotion ? false : 'hidden'}
+              animate={reduceMotion ? undefined : 'visible'}
+              variants={reduceMotion ? undefined : revealUp}
+            >
+                <p className="brand-serif text-lg leading-none text-stone-600 dark:text-stone-300 md:text-xl">Last 5 sessions</p>
 
                 {trend.length > 0 ? (
-                  <div className="mt-4 h-44 w-full md:h-48">
-                    <ChartContainer config={chartConfig} className="h-full w-full">
-                      <AreaChart
-                        accessibilityLayer
-                        data={trend}
-                        margin={{ top: 18, right: 12, left: -14, bottom: 4 }}
-                      >
-                        <defs>
-                          <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="var(--color-score)" stopOpacity={0.22} />
-                            <stop offset="100%" stopColor="var(--color-score)" stopOpacity={0.03} />
-                          </linearGradient>
-                        </defs>
-                        {trend.length === 1 ? (
-                          <>
-                            <ReferenceArea y1={0} y2={trend[0].score} fill="url(#scoreFill)" fillOpacity={1} />
-                            <ReferenceLine
-                              y={trend[0].score}
-                              stroke="var(--color-score)"
-                              strokeOpacity={0.55}
-                              strokeWidth={1.8}
-                            />
-                          </>
-                        ) : null}
-                        <CartesianGrid vertical={false} stroke="rgb(214 211 209)" strokeDasharray="4 4" />
-                        <XAxis
-                          dataKey="date"
-                          axisLine={false}
-                          tickLine={false}
-                          tickMargin={10}
-                          interval={0}
-                          className="text-xs text-stone-500"
-                        />
-                        <YAxis
-                          domain={[0, 4]}
-                          ticks={[0, 2, 4]}
-                          axisLine={false}
-                          tickLine={false}
-                          tickMargin={8}
-                          className="text-xs text-stone-500"
-                        />
-                        <ChartTooltip
-                          cursor={false}
-                          content={<ChartTooltipContent labelKey="date" />}
-                        />
-                        <Area
-                          dataKey="score"
-                          type="monotone"
-                          fill="url(#scoreFill)"
-                          fillOpacity={1}
-                          stroke="var(--color-score)"
-                          strokeWidth={1.8}
-                          dot={{ r: 3.2, fill: 'var(--color-score)', stroke: 'var(--color-score)' }}
-                          activeDot={{ r: 4, fill: 'var(--color-score)' }}
-                        />
-                      </AreaChart>
-                    </ChartContainer>
-                  </div>
+                  <TrendChart trend={trend} />
                 ) : (
-                  <p className="mt-4 text-sm text-stone-600">
+                  <p className="mt-4 text-sm text-stone-600 dark:text-stone-400">
                     No scored sessions yet. Your trend chart will appear after your first scored run.
                   </p>
                 )}
-              </article>
+            </motion.article>
+          ) : null}
 
+          <motion.div
+            className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-9"
+            initial={reduceMotion ? false : 'hidden'}
+            animate={reduceMotion ? undefined : 'visible'}
+            variants={reduceMotion ? undefined : revealUp}
+          >
+            <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">Session History</h2>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void reloadDashboard()}
+              disabled={isRefreshing}
+              className="shrink-0 border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800"
+            >
+              <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
+              {isRefreshing ? 'Refreshing...' : 'Refresh sessions'}
+            </Button>
+          </motion.div>
+
+          {sessionItems.length === 0 ? (
+            <section className="mt-6 rounded-2xl border border-stone-300/90 bg-stone-50/70 p-5 dark:border-stone-800 dark:bg-stone-900/75 md:p-6">
+              <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">No sessions yet</h2>
+              <p className="mt-2 text-base text-stone-600 dark:text-stone-400 md:text-lg">
+                Complete your first interview session and it will appear here.
+              </p>
+            </section>
+          ) : (
+            <motion.div
+              initial={reduceMotion ? false : 'hidden'}
+              animate={reduceMotion ? undefined : 'visible'}
+              variants={reduceMotion ? undefined : revealUp}
+            >
               <SessionList items={sessionItems} className="mt-6 md:mt-7" />
-            </>
+            </motion.div>
           )}
-        </section>
-      </main>
-    </div>
+        </>
+      )}
+    </section>
   )
 }
 

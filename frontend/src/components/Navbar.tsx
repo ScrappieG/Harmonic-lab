@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
+import { useAuthStatus } from '@/hooks/useAuthStatus'
 import { supabase } from '../lib/supabase'
+import { Skeleton } from './ui/skeleton'
 
 async function signInWithGoogle() {
   await supabase.auth.signInWithOAuth({
@@ -9,6 +11,8 @@ async function signInWithGoogle() {
 }
 
 function Navbar() {
+  const { isAuthenticated, isLoading } = useAuthStatus()
+
   return (
     <header className="sticky top-0 z-50 border-b border-stone-200/90 bg-stone-50/95 backdrop-blur-sm">
       <nav className="layout-shell relative flex items-center py-3">
@@ -35,13 +39,26 @@ function Navbar() {
           </li>
         </ul>
 
-        <button
-          type="button"
-          onClick={signInWithGoogle}
-          className="ml-auto rounded-lg bg-lime-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-lime-950"
-        >
-          Sign in
-        </button>
+        <div className="ml-auto flex h-10 w-28 items-center justify-end">
+          {isLoading ? (
+            <Skeleton className="h-10 w-28 rounded-lg" />
+          ) : isAuthenticated ? (
+            <Link
+              to="/dashboard"
+              className="inline-flex h-10 w-28 items-center justify-center rounded-lg bg-lime-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-lime-950"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={signInWithGoogle}
+              className="h-10 w-28 rounded-lg bg-lime-900 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-lime-950"
+            >
+              Sign in
+            </button>
+          )}
+        </div>
       </nav>
     </header>
   )

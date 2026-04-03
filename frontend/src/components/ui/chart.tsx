@@ -47,7 +47,7 @@ function ChartContainer({
         data-slot="chart"
         data-chart={chartId}
         className={cn(
-          "[&_.recharts-cartesian-axis-tick_text]:fill-stone-500 [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-stone-300 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-stone-400 [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none",
+          "[&_.recharts-cartesian-axis-tick_text]:fill-stone-500 [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-stone-300 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-stone-400 [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none dark:[&_.recharts-cartesian-axis-tick_text]:fill-stone-400 dark:[&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-stone-700 dark:[&_.recharts-curve.recharts-tooltip-cursor]:stroke-stone-600",
           className
         )}
         {...props}
@@ -125,11 +125,11 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
       <div
         ref={ref}
         className={cn(
-          "grid min-w-32 gap-2 rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-xs shadow-sm",
+          "grid min-w-32 gap-2 rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-xs shadow-sm dark:border-stone-700 dark:bg-stone-900",
           className
         )}
       >
-        {tooltipLabel ? <div className="font-medium text-stone-800">{tooltipLabel}</div> : null}
+        {tooltipLabel ? <div className="font-medium text-stone-800 dark:text-stone-100">{tooltipLabel}</div> : null}
         <div className="grid gap-1">
           {payload.map((item, index) => {
             const itemConfig = getItemConfig(item)
@@ -142,7 +142,7 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
             const renderedValue = Array.isArray(formattedValue) ? formattedValue[0] : formattedValue
 
             return (
-              <div key={`${item.dataKey ?? item.name ?? index}`} className="flex items-center gap-2 text-stone-700">
+              <div key={`${item.dataKey ?? item.name ?? index}`} className="flex items-center gap-2 text-stone-700 dark:text-stone-200">
                 {!hideIndicator ? (
                   <span
                     className={cn(
@@ -152,8 +152,8 @@ const ChartTooltipContent = React.forwardRef<HTMLDivElement, ChartTooltipContent
                     style={{ backgroundColor: indicatorColor }}
                   />
                 ) : null}
-                <span className="text-stone-500">{itemConfig.label ?? item.name}</span>
-                <span className="ml-auto font-medium text-stone-900">{renderedValue}</span>
+                <span className="text-stone-500 dark:text-stone-400">{itemConfig.label ?? item.name}</span>
+                <span className="ml-auto font-medium text-stone-900 dark:text-stone-100">{renderedValue}</span>
               </div>
             )
           })}

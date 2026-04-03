@@ -4,9 +4,13 @@ chrome.action.onClicked.addListener((tab) => {
   }
 });
 
-chrome.runtime.onMessageExternal.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  console.log('[articuLeet bg] External message from:', sender.origin, message)
   if (message.access_token) {
-    chrome.storage.local.set({ access_token: message.access_token });
-    sendResponse({ ok: true });
+    chrome.storage.local.set({ access_token: message.access_token }, () => {
+      console.log('[articuLeet bg] Token stored')
+      sendResponse({ ok: true })
+    })
+    return true // keeps sendResponse channel open for async response
   }
-});
+})
