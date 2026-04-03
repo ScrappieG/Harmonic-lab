@@ -3,10 +3,9 @@ name = "articuleet-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi<0.116",
-  "httpx<0.28",
-  "python-multipart<0.0.18",
-  "pydantic<2.11"
+  "fastapi",
+  "httpx",
+  "python-multipart"
 ]
 
 [dependency-groups]

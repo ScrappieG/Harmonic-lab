@@ -2,7 +2,6 @@ from fastapi import FastAPI, UploadFile, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from workers import WorkerEntrypoint
-import asgi
 import json
 import httpx
 
@@ -95,4 +94,5 @@ async def healthz():
 # cloudflare worker entrypoint
 class Default(WorkerEntrypoint):
     async def fetch(self, request):
+        import asgi
         return await asgi.fetch(app, request, self.env)
