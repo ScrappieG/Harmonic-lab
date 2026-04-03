@@ -7,11 +7,10 @@
   if (!match) return;
 
   // ===== CONFIG =====
-  var API_BASE = 'https://articuleet.workers.dev';
-  var LOGIN_URL = 'https://articuleet.com/auth/extension';
+  var DASHBOARD_URL = 'https://articuleet.com/dashboard';
 
   // ===== AUTH STATE =====
-  var authedUser = null; // { id, email } once validated
+  var authedUser = null;
 
   // ===== GET PROBLEM NAME =====
   function slugToTitle(slug) {
@@ -216,7 +215,6 @@
 
   // ===== SHOW SCREEN (with auth gate) =====
   function show(key) {
-    // If not authed, only allow login screen
     if (!authedUser && key !== 'login') {
       key = 'login';
     }
@@ -501,7 +499,7 @@
     if (takeaway) takeaway.textContent = '';
   }
 
-  // ===== API HELPERS =====
+  // ===== AUTH (local only — no backend needed) =====
   function getAuthToken() {
     return new Promise(function (resolve, reject) {
       chrome.storage.local.get('access_token', function (result) {
@@ -514,41 +512,29 @@
     });
   }
 
-  function apiPost(path, body, token) {
-    return fetch(API_BASE + path, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token,
-      },
-      body: JSON.stringify(body),
-    }).then(function (res) {
-      if (!res.ok) return res.text().then(function (t) { throw new Error(t); });
-      return res.json();
-    });
+  // Decode the JWT payload to get user info without calling backend
+  function decodeJwtPayload(token) {
+    try {
+      var base64 = token.split('.')[1];
+      var json = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
   }
 
-  function apiUploadAudio(blob, token) {
-    var form = new FormData();
-    form.append('audio', blob, 'recording.webm');
-    return fetch(API_BASE + '/transcribe', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
-      body: form,
-    }).then(function (res) {
-      if (!res.ok) return res.text().then(function (t) { throw new Error(t); });
-      return res.json();
-    });
-  }
+  function validateTokenLocally(token) {
+    var payload = decodeJwtPayload(token);
+    if (!payload) return null;
 
-  // ===== AUTH =====
-  function validateToken(token) {
-    return fetch(API_BASE + '/me', {
-      headers: { 'Authorization': 'Bearer ' + token },
-    }).then(function (res) {
-      if (!res.ok) throw new Error('Invalid token');
-      return res.json();
-    });
+    // Check if token is expired
+    var now = Math.floor(Date.now() / 1000);
+    if (payload.exp && payload.exp < now) return null;
+
+    return {
+      id: payload.sub || '',
+      email: payload.email || '',
+    };
   }
 
   function onAuthSuccess(user) {
@@ -567,10 +553,12 @@
   function checkAuth() {
     getAuthToken()
       .then(function (token) {
-        return validateToken(token);
-      })
-      .then(function (user) {
-        onAuthSuccess(user);
+        var user = validateTokenLocally(token);
+        if (user) {
+          onAuthSuccess(user);
+        } else {
+          onAuthFail();
+        }
       })
       .catch(function () {
         onAuthFail();
@@ -580,98 +568,38 @@
   // Listen for token arriving from website after OAuth
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area === 'local' && changes.access_token && changes.access_token.newValue) {
-      validateToken(changes.access_token.newValue)
-        .then(function (user) {
-          onAuthSuccess(user);
-        })
-        .catch(function () {
-          onAuthFail();
-        });
+      var user = validateTokenLocally(changes.access_token.newValue);
+      if (user) {
+        onAuthSuccess(user);
+      } else {
+        onAuthFail();
+      }
     }
   });
 
-  // ===== UPLOAD SESSION =====
-  function uploadSession() {
-    var token;
-    var sessionId;
-    var transcripts = {};
+  // ===== DOWNLOAD RECORDINGS (testing only) =====
+  function downloadRecordings() {
+    sectionKeys.forEach(function (key) {
+      var s = sec[key];
+      if (!s.blob) return;
 
-    return getAuthToken()
-      .then(function (t) {
-        token = t;
-        return apiPost('/sessions/start', {
-          problem_name: problemName,
-          problem_url: window.location.href,
-        }, token);
-      })
-      .then(function (session) {
-        sessionId = session.id;
-        var jobs = sectionKeys.map(function (key) {
-          if (!sec[key].blob) {
-            transcripts[key] = null;
-            return Promise.resolve();
-          }
-          return apiUploadAudio(sec[key].blob, token).then(function (result) {
-            transcripts[key] = result.text;
-          });
-        });
-        return Promise.all(jobs);
-      })
-      .then(function () {
-        var combined = sectionKeys.map(function (key) {
-          return '## ' + sectionNames[key] + '\n' + (transcripts[key] || '(skipped)');
-        }).join('\n\n');
+      var url = URL.createObjectURL(s.blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
-        return apiPost('/analyze', {
-          transcript: combined,
-          problem: problemName,
-          code: '',
-        }, token).then(function (scores) {
-          return { combined: combined, scores: scores };
-        });
-      })
-      .then(function (result) {
-        var totalSeconds = 0;
-        sectionKeys.forEach(function (k) { totalSeconds += sec[k].seconds; });
+      setTimeout(function () {
+        URL.revokeObjectURL(url);
+      }, 1000);
+    });
 
-        return Promise.all([
-          apiPost('/sessions/details', {
-            session_id: sessionId,
-            transcript: result.combined,
-            code: '',
-            problem_statement: problemName,
-          }, token),
-          apiPost('/sessions/score', {
-            session_id: sessionId,
-            score_overall: Math.round(((result.scores.Communication || 0) + (result.scores.Ps || 0) + (result.scores.code || 0)) / 3),
-            feedback_overall: result.scores.overall_takeaway || '',
-            score_comm: result.scores.Communication || 0,
-            feedback_comm: result.scores.Communication_reason || '',
-            score_ps: result.scores.Ps || 0,
-            feedback_ps: result.scores.Ps_reason || '',
-            pass_: result.scores.Pass || false,
-            overall_takeaway: result.scores.overall_takeaway || '',
-          }, token),
-          apiPost('/sessions/finish', {
-            session_id: sessionId,
-            total_time: totalSeconds,
-          }, token),
-        ]).then(function () {
-          return result.scores;
-        });
-      })
-      .then(function (scores) {
-        updateFeedback(scores);
-      })
-      .catch(function (err) {
-        console.error('[articuLeet] Upload failed:', err);
-        // If auth expired mid-session, kick to login
-        if (err.message && err.message.indexOf('401') !== -1) {
-          onAuthFail();
-        }
-      });
+    console.log('[articuLeet] Downloaded all recorded sections');
   }
 
+  // ===== COMPLETE (mock feedback — no backend) =====
   function updateComplete() {
     var total = 0;
     var done = 0;
@@ -706,7 +634,20 @@
       }).join('');
     }
 
-    uploadSession();
+    // Mock feedback — replace with real API call when backend is deployed
+    console.log('[articuLeet] Session complete (' + done + '/5 sections, ' + fmt(total) + ' total)');
+    console.log('[articuLeet] Backend not connected — showing mock feedback');
+
+    updateFeedback({
+      Communication: 3,
+      Communication_reason: 'Clear explanation of constraints and edge cases.',
+      Ps: 3,
+      Ps_reason: 'Chose optimal hashmap approach quickly.',
+      code: 2,
+      code_reason: 'Minor variable naming issues.',
+      Pass: true,
+      overall_takeaway: 'Solid walkthrough — tighten up variable naming and narrate edge-case handling earlier.'
+    });
   }
 
   function resetAll() {
@@ -849,10 +790,24 @@
 
   // ===== LOGIN BUTTON =====
   root.querySelector('#btn-google-signin').addEventListener('click', function () {
-    window.open(LOGIN_URL, '_blank');
+    window.open('https://articuleet.com/auth/extension', '_blank');
   });
 
-  // ===== INIT: CHECK AUTH =====
+  // ===== DASHBOARD BUTTONS =====
+  root.querySelectorAll('.btn-outline').forEach(function (btn) {
+    if (btn.textContent.trim() === 'View Dashboard' || btn.textContent.trim() === 'View Full Analysis') {
+      btn.addEventListener('click', function () {
+        window.open(DASHBOARD_URL, '_blank');
+      });
+    }
+  });
+
+  // ===== DOWNLOAD BUTTON =====
+  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+    downloadRecordings();
+  });
+
+  // ===== INIT =====
   updateCloseButtons();
-  checkAuth(); // shows login or start screen
+  checkAuth();
 })();
