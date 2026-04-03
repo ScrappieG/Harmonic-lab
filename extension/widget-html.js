@@ -365,6 +365,9 @@ const WIDGET_HTML = `
       <button class="btn-outline">View Full Analysis</button>
       <button class="btn-outline" id="btn-new-session">New Session</button>
     </div>
+    <div class="row-center gap-12" style="margin-top:10px">
+      <button class="btn-outline" id="btn-download-recordings">⬇ Download Recordings</button>
+    </div>
   </section>
   <hr class="divider">
   <footer class="user-footer">
