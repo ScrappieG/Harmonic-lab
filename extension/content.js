@@ -7,7 +7,7 @@
   if (!match) return;
 
   // ===== CONFIG =====
-  var API_BASE = 'https://harmonic-lab.pages.dev';
+  var API_BASE = 'https://api.articuleet.com';
   var DASHBOARD_URL = 'https://articuleet.com/dashboard';
 
   // ===== AUTH STATE =====
