@@ -92,7 +92,7 @@ def get_supabase(request) -> SupabaseClient:
     """Get a SupabaseClient from the Cloudflare Worker env attached to the request."""
     env = request.scope["env"]
     url = getattr(env, "SUPABASE_PUB_URL", None)
-    key = getattr(env, "SUPABASE_PUB_KEY", None)
+    key = getattr(env, "SUPABASE_SERV_KEY", None)
     if not url or not key:
         raise HTTPException(status_code=500, detail="SUPABASE_URL or SUPABASE_KEY missing")
     return SupabaseClient(url, key)
