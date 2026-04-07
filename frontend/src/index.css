@@ -199,4 +199,29 @@
     border-left-width: 2px;
   }
 
+  .dashboard-hover-card {
+    transition:
+      transform 220ms ease,
+      box-shadow 220ms ease,
+      border-color 220ms ease,
+      background-color 220ms ease;
+  }
+
+  .dashboard-hover-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(121, 140, 81, 0.28);
+    box-shadow: 0 16px 34px rgba(41, 38, 31, 0.08);
+  }
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-hover-card {
+    transition: none;
+  }
+
+  .dashboard-hover-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }

@@ -5,7 +5,12 @@ import type { SessionListProps } from './types'
 
 function SessionList({ items, className }: SessionListProps) {
   return (
-    <section className={cn('overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70', className)}>
+    <section
+      className={cn(
+        'overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/70 dark:border-stone-800 dark:bg-stone-900/75',
+        className
+      )}
+    >
       {items.map((item, index) => (
         <SessionRow key={item.id} item={item} isLast={index === items.length - 1} />
       ))}

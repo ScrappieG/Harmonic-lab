@@ -20,6 +20,7 @@
     }).join(' ');
   }
 
+  // Ret problem name
   function getProblemName() {
     var selectors = [
       '[data-cy="question-title"]',
@@ -899,6 +900,29 @@
     if (currentSection) restartRec(currentSection);
   });
 
+    // ===== DOWNLOAD RECORDINGS (testing only) =====
+    function downloadRecordings() {
+      sectionKeys.forEach(function (key) {
+        var s = sec[key];
+        if (!s.blob) return;
+  
+        var url = URL.createObjectURL(s.blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+  
+        // Clean up the object URL after a short delay
+        setTimeout(function () {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      });
+  
+      console.log('[articuLeet] Downloaded all recorded sections');
+    }
+
   // ===== NAV BUTTONS =====
   root.querySelector('#btn-start-recording').addEventListener('click', function () {
     show('sec1');
@@ -907,6 +931,10 @@
   root.querySelector('#btn-new-session').addEventListener('click', function () {
     resetAll();
     show('start');
+  });
+
+  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+    downloadRecordings();
   });
 
   root.querySelector('#btn-expand-mini').addEventListener('click', function () {
