@@ -7,6 +7,7 @@
   if (!match) return;
 
   // ===== CONFIG =====
+  var API_BASE = 'https://harmonic-lab.pages.dev';
   var DASHBOARD_URL = 'https://articuleet.com/dashboard';
 
   // ===== AUTH STATE =====
@@ -218,7 +219,6 @@
     if (!authedUser && key !== 'login') {
       key = 'login';
     }
-
     if (key !== 'mini') lastScreen = key;
     Object.values(screens).forEach(function (s) { s.classList.remove('active'); });
     screens[key].classList.add('active');
@@ -499,7 +499,37 @@
     if (takeaway) takeaway.textContent = '';
   }
 
-  // ===== AUTH (local only — no backend needed) =====
+  // ===== FEEDBACK UI STATES =====
+  function showFeedbackLoading() {
+    var loading = root.querySelector('#fb-loading');
+    var error = root.querySelector('#fb-error');
+    var results = root.querySelector('#fb-results');
+    if (loading) loading.classList.remove('hidden');
+    if (error) error.classList.add('hidden');
+    if (results) results.classList.add('hidden');
+  }
+
+  function showFeedbackError(message) {
+    var loading = root.querySelector('#fb-loading');
+    var error = root.querySelector('#fb-error');
+    var results = root.querySelector('#fb-results');
+    var detail = root.querySelector('#fb-error-detail');
+    if (loading) loading.classList.add('hidden');
+    if (error) error.classList.remove('hidden');
+    if (results) results.classList.add('hidden');
+    if (detail) detail.textContent = message || 'Something went wrong.';
+  }
+
+  function showFeedbackResults() {
+    var loading = root.querySelector('#fb-loading');
+    var error = root.querySelector('#fb-error');
+    var results = root.querySelector('#fb-results');
+    if (loading) loading.classList.add('hidden');
+    if (error) error.classList.add('hidden');
+    if (results) results.classList.remove('hidden');
+  }
+
+  // ===== AUTH =====
   function getAuthToken() {
     return new Promise(function (resolve, reject) {
       chrome.storage.local.get('access_token', function (result) {
@@ -512,7 +542,6 @@
     });
   }
 
-  // Decode the JWT payload to get user info without calling backend
   function decodeJwtPayload(token) {
     try {
       var base64 = token.split('.')[1];
@@ -526,11 +555,8 @@
   function validateTokenLocally(token) {
     var payload = decodeJwtPayload(token);
     if (!payload) return null;
-
-    // Check if token is expired
     var now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) return null;
-
     return {
       id: payload.sub || '',
       email: payload.email || '',
@@ -565,7 +591,6 @@
       });
   }
 
-  // Listen for token arriving from website after OAuth
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area === 'local' && changes.access_token && changes.access_token.newValue) {
       var user = validateTokenLocally(changes.access_token.newValue);
@@ -576,6 +601,164 @@
       }
     }
   });
+
+  // ===== API HELPERS =====
+  function apiPost(path, body, token) {
+    return fetch(API_BASE + path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify(body),
+    }).then(function (res) {
+      if (res.status === 401) {
+        onAuthFail();
+        throw new Error('Session expired — please sign in again');
+      }
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error('API ' + path + ' failed (' + res.status + '): ' + t);
+        });
+      }
+      return res.json();
+    });
+  }
+
+  function apiUploadAudio(blob, token) {
+    var form = new FormData();
+    form.append('audio', blob, 'recording.webm');
+    return fetch(API_BASE + '/transcribe', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: form,
+    }).then(function (res) {
+      if (res.status === 401) {
+        onAuthFail();
+        throw new Error('Session expired — please sign in again');
+      }
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error('Transcribe failed (' + res.status + '): ' + t);
+        });
+      }
+      return res.json();
+    });
+  }
+
+  // ===== UPLOAD & ANALYZE SESSION =====
+  var lastSessionBlobs = null; // stored for retry
+
+  function uploadSession() {
+    var token;
+    var sessionId;
+    var transcripts = {};
+
+    showFeedbackLoading();
+
+    // Store blobs for potential retry
+    lastSessionBlobs = {};
+    sectionKeys.forEach(function (key) {
+      lastSessionBlobs[key] = sec[key].blob;
+    });
+
+    return getAuthToken()
+      .then(function (t) {
+        token = t;
+        console.log('[articuLeet] Creating session...');
+
+        // 1. Create session
+        return apiPost('/sessions/start', {
+          problem_name: problemName,
+          problem_url: window.location.href,
+        }, token);
+      })
+      .then(function (session) {
+        sessionId = session.id;
+        console.log('[articuLeet] Session created:', sessionId);
+
+        // 2. Transcribe each recorded section (parallel)
+        var jobs = sectionKeys.map(function (key) {
+          var blob = lastSessionBlobs[key];
+          if (!blob) {
+            transcripts[key] = null;
+            return Promise.resolve();
+          }
+          console.log('[articuLeet] Transcribing ' + key + ' (' + Math.round(blob.size / 1024) + 'KB)...');
+          return apiUploadAudio(blob, token).then(function (result) {
+            transcripts[key] = result.text;
+            console.log('[articuLeet] ' + key + ': ' + result.text.substring(0, 60) + '...');
+          });
+        });
+
+        return Promise.all(jobs);
+      })
+      .then(function () {
+        // 3. Combine transcripts
+        var combined = sectionKeys.map(function (key) {
+          return '## ' + sectionNames[key] + '\n' + (transcripts[key] || '(skipped)');
+        }).join('\n\n');
+
+        console.log('[articuLeet] Saving transcript & details...');
+
+        // 4. Save details to database
+        return apiPost('/sessions/details', {
+          session_id: sessionId,
+          transcript: combined,
+          code: '',
+          problem_statement: problemName,
+        }, token).then(function () {
+          return combined;
+        });
+      })
+      .then(function (combined) {
+        console.log('[articuLeet] Analyzing transcript...');
+
+        // 5. Send to AI for analysis
+        return apiPost('/analyze', {
+          transcript: combined,
+          problem: problemName,
+          code: '',
+        }, token);
+      })
+      .then(function (scores) {
+        console.log('[articuLeet] Analysis complete:', scores);
+
+        // 6. Save scores to database + finish session (parallel)
+        var totalSeconds = 0;
+        sectionKeys.forEach(function (k) { totalSeconds += sec[k].seconds; });
+
+        return Promise.all([
+          apiPost('/sessions/score', {
+            session_id: sessionId,
+            score_overall: Math.round(((scores.Communication || 0) + (scores.Ps || 0) + (scores.code || 0)) / 3),
+            feedback_overall: scores.overall_takeaway || '',
+            score_comm: scores.Communication || 0,
+            feedback_comm: scores.Communication_reason || '',
+            score_ps: scores.Ps || 0,
+            feedback_ps: scores.Ps_reason || '',
+            pass_: scores.Pass || false,
+            overall_takeaway: scores.overall_takeaway || '',
+          }, token),
+          apiPost('/sessions/finish', {
+            session_id: sessionId,
+            total_time: totalSeconds,
+          }, token),
+        ]).then(function () {
+          return scores;
+        });
+      })
+      .then(function (scores) {
+        // 7. Show results in the UI
+        updateFeedback(scores);
+        showFeedbackResults();
+        console.log('[articuLeet] Session saved successfully!');
+      })
+      .catch(function (err) {
+        console.error('[articuLeet] Upload failed:', err);
+        showFeedbackError(err.message || 'Something went wrong.');
+      });
+  }
 
   // ===== DOWNLOAD RECORDINGS (testing only) =====
   function downloadRecordings() {
@@ -599,7 +782,7 @@
     console.log('[articuLeet] Downloaded all recorded sections');
   }
 
-  // ===== COMPLETE (mock feedback — no backend) =====
+  // ===== COMPLETE =====
   function updateComplete() {
     var total = 0;
     var done = 0;
@@ -634,20 +817,8 @@
       }).join('');
     }
 
-    // Mock feedback — replace with real API call when backend is deployed
-    console.log('[articuLeet] Session complete (' + done + '/5 sections, ' + fmt(total) + ' total)');
-    console.log('[articuLeet] Backend not connected — showing mock feedback');
-
-    updateFeedback({
-      Communication: 3,
-      Communication_reason: 'Clear explanation of constraints and edge cases.',
-      Ps: 3,
-      Ps_reason: 'Chose optimal hashmap approach quickly.',
-      code: 2,
-      code_reason: 'Minor variable naming issues.',
-      Pass: true,
-      overall_takeaway: 'Solid walkthrough — tighten up variable naming and narrate edge-case handling earlier.'
-    });
+    // Upload → Transcribe → Analyze → Save → Show
+    uploadSession();
   }
 
   function resetAll() {
@@ -656,7 +827,9 @@
     });
     releaseMic();
     currentSection = null;
+    lastSessionBlobs = null;
     resetFeedback();
+    showFeedbackLoading();
     updateCloseButtons();
   }
 
@@ -793,18 +966,24 @@
     window.open('https://articuleet.com/auth/extension', '_blank');
   });
 
-  // ===== DASHBOARD BUTTONS =====
-  root.querySelectorAll('.btn-outline').forEach(function (btn) {
-    if (btn.textContent.trim() === 'View Dashboard' || btn.textContent.trim() === 'View Full Analysis') {
-      btn.addEventListener('click', function () {
-        window.open(DASHBOARD_URL, '_blank');
-      });
-    }
+  // ===== DASHBOARD BUTTON =====
+  root.querySelector('#btn-dashboard').addEventListener('click', function () {
+    window.open(DASHBOARD_URL, '_blank');
+  });
+
+  // ===== VIEW ANALYSIS BUTTON =====
+  root.querySelector('#btn-view-analysis').addEventListener('click', function () {
+    window.open(DASHBOARD_URL, '_blank');
   });
 
   // ===== DOWNLOAD BUTTON =====
   root.querySelector('#btn-download-recordings').addEventListener('click', function () {
     downloadRecordings();
+  });
+
+  // ===== RETRY BUTTON =====
+  root.querySelector('#btn-retry-analysis').addEventListener('click', function () {
+    uploadSession();
   });
 
   // ===== INIT =====

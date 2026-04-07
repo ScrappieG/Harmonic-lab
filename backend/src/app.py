@@ -12,7 +12,8 @@ app.add_middleware(
     allow_origins=[
         "https://articuleet.com",
         "https://www.articuleet.com",
-        "http://localhost:5173"
+        "http://localhost:5173",
+        "https://leetcode.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
