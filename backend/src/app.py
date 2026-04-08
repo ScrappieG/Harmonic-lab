@@ -72,13 +72,42 @@ async def transcribe(audio: UploadFile, request: Request):
     return {"text": payload.get("text", "")}
 
 class AnalyzeRequest(BaseModel):
-    transcript: str
-    problem: str
     code: str = ""
+    problem_statement: str = ""
+    constraints: str = ""
+    language: str = "Python"
+    section_1: str = ""
+    section_2: str = ""
+    section_3: str = ""
+    section_4: str = ""
+    section_5: str = ""
 
 @app.post("/analyze")
 async def analyze(data: AnalyzeRequest, request: Request):
+    from evaluators.interview_eval_single_pass import (
+        get_single_pass_system_prompt,
+        build_single_pass_user_prompt,
+    )
+
     api_key = get_api_key(request)
+
+    sections = {
+        "section_1": data.section_1,
+        "section_2": data.section_2,
+        "section_3": data.section_3,
+        "section_4": data.section_4,
+        "section_5": data.section_5,
+    }
+
+    system_prompt = get_single_pass_system_prompt()
+    user_prompt = build_single_pass_user_prompt(
+        problem_statement=data.problem_statement,
+        constraints=data.constraints,
+        language=data.language,
+        code=data.code,
+        transcript_sections=sections,
+    )
+
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -86,7 +115,11 @@ async def analyze(data: AnalyzeRequest, request: Request):
     payload = {
         "model": "gpt-4o",
         "response_format": {"type": "json_object"},
-        "messages": [ ... ],
+        "temperature": 0.0,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
     }
 
     async with httpx.AsyncClient(timeout=120.0) as client:
@@ -101,7 +134,21 @@ async def analyze(data: AnalyzeRequest, request: Request):
 
     response_payload = response.json()
     content = response_payload["choices"][0]["message"]["content"]
-    return json.loads(content)
+    result = json.loads(content)
+
+    # Map evaluator output to DB schema
+    return {
+        "score_overall": result.get("Overall", 0),
+        "feedback_overall": result.get("Feedback", ""),
+        "score_comm": result.get("Communication", 0),
+        "feedback_comm": result.get("Communication_reason", ""),
+        "score_ps": result.get("Ps", 0),
+        "feedback_ps": result.get("Ps_reason", ""),
+        "score_technical": result.get("coding_score", 0),
+        "feedback_technical": result.get("coding_reason", ""),
+        "pass": bool(result.get("Pass", False)),
+        "overall_takeaway": result.get("Feedback", ""),
+    }
 
 
 class StartSessionRequest(BaseModel):
@@ -126,6 +173,8 @@ class SaveScoreRequest(BaseModel):
     feedback_comm: str
     score_ps: float
     feedback_ps: str
+    score_technical: float
+    feedback_technical: str
     pass_: bool = Field(alias="pass")
     overall_takeaway: str
 
@@ -158,6 +207,8 @@ async def save_score_route(data: SaveScoreRequest, request: Request):
         "feedback_comm": data.feedback_comm,
         "score_ps": data.score_ps,
         "feedback_ps": data.feedback_ps,
+        "score_technical": data.score_technical,
+        "feedback_technical": data.feedback_technical,
         "pass": data.pass_,
         "overall_takeaway": data.overall_takeaway,
     }

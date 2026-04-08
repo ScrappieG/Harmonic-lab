@@ -13,6 +13,22 @@
   // ===== AUTH STATE =====
   var authedUser = null;
 
+  // ===== PAGE SCRAPERS =====
+  function getCode() {
+    try {
+      if (window.monaco && window.monaco.editor) {
+        var models = window.monaco.editor.getModels();
+        if (models && models.length > 0) return models[0].getValue();
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function getProblemStatement() {
+    var el = document.querySelector('[data-track-load="description_content"]');
+    return el ? el.innerText.trim() : '';
+  }
+
   // ===== GET PROBLEM NAME =====
   function slugToTitle(slug) {
     return slug.split('-').map(function (word) {
@@ -694,52 +710,50 @@
         return Promise.all(jobs);
       })
       .then(function () {
-        // 3. Combine transcripts
+        // 3. Save raw transcript & details to database
         var combined = sectionKeys.map(function (key) {
           return '## ' + sectionNames[key] + '\n' + (transcripts[key] || '(skipped)');
         }).join('\n\n');
 
+        var problemStatement = getProblemStatement();
+        var code = getCode();
+
         console.log('[articuLeet] Saving transcript & details...');
 
-        // 4. Save details to database
         return apiPost('/sessions/details', {
           session_id: sessionId,
           transcript: combined,
-          code: '',
-          problem_statement: problemName,
+          code: code,
+          problem_statement: problemStatement,
         }, token).then(function () {
-          return combined;
+          return { code: code, problemStatement: problemStatement };
         });
       })
-      .then(function (combined) {
+      .then(function (ctx) {
         console.log('[articuLeet] Analyzing transcript...');
 
-        // 5. Send to AI for analysis
+        // 4. Send to AI for analysis (sections + code + problem statement)
         return apiPost('/analyze', {
-          transcript: combined,
-          problem: problemName,
-          code: '',
+          code: ctx.code,
+          problem_statement: ctx.problemStatement || problemName,
+          constraints: '',
+          language: 'Python',
+          section_1: transcripts.sec1 || '',
+          section_2: transcripts.sec2 || '',
+          section_3: transcripts.sec3 || '',
+          section_4: transcripts.sec4 || '',
+          section_5: transcripts.sec5 || '',
         }, token);
       })
       .then(function (scores) {
         console.log('[articuLeet] Analysis complete:', scores);
 
-        // 6. Save scores to database + finish session (parallel)
+        // 5. Save scores + finish session (parallel) — /analyze already returns DB-ready fields
         var totalSeconds = 0;
         sectionKeys.forEach(function (k) { totalSeconds += sec[k].seconds; });
 
         return Promise.all([
-          apiPost('/sessions/score', {
-            session_id: sessionId,
-            score_overall: Math.round(((scores.Communication || 0) + (scores.Ps || 0) + (scores.code || 0)) / 3),
-            feedback_overall: scores.overall_takeaway || '',
-            score_comm: scores.Communication || 0,
-            feedback_comm: scores.Communication_reason || '',
-            score_ps: scores.Ps || 0,
-            feedback_ps: scores.Ps_reason || '',
-            pass_: scores.Pass || false,
-            overall_takeaway: scores.overall_takeaway || '',
-          }, token),
+          apiPost('/sessions/score', Object.assign({ session_id: sessionId }, scores), token),
           apiPost('/sessions/finish', {
             session_id: sessionId,
             total_time: totalSeconds,
