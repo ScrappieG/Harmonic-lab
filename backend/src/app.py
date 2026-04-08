@@ -99,7 +99,23 @@ async def analyze(data: AnalyzeRequest, request: Request):
         "section_5": data.section_5,
     }
 
-    system_prompt = get_single_pass_system_prompt()
+    system_prompt = get_single_pass_system_prompt() + """
+
+Return a JSON object with EXACTLY these keys (use these exact names and casing):
+{
+  "coding_score": <int 1-4>,
+  "coding_reason": "<string max 150 chars>",
+  "time": "<worst-case time complexity, e.g. O(n)>",
+  "space_aux": "<aux space complexity, e.g. O(1)>",
+  "Communication": <int 1-4>,
+  "Communication_reason": "<string max 150 chars>",
+  "Ps": <int 1-4>,
+  "Ps_reason": "<string max 150 chars>",
+  "Overall": <int 1-4>,
+  "Pass": <true|false>,
+  "Feedback": "<string max 270 chars>"
+}
+"""
     user_prompt = build_single_pass_user_prompt(
         problem_statement=data.problem_statement,
         constraints=data.constraints,
@@ -135,6 +151,9 @@ async def analyze(data: AnalyzeRequest, request: Request):
     response_payload = response.json()
     content = response_payload["choices"][0]["message"]["content"]
     result = json.loads(content)
+
+    # DEBUG: uncomment to see raw model output
+    # return {"_raw": result}
 
     # Map evaluator output to DB schema
     return {
