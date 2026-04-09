@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from './ui/button'
 
@@ -55,6 +56,15 @@ function AboutSection() {
                   Install Chrome Extension
                 </a>
               </Button>
+
+              <div className="mt-4">
+                <Link
+                  to="/privacy"
+                  className="brand-mono text-[11px] uppercase underline underline-offset-1 tracking-[0.2em] text-stone-400 transition-colors hover:text-stone-100"
+                >
+                  Privacy Policy
+                </Link>
+              </div>
             </div>
           </motion.div>
         </div>

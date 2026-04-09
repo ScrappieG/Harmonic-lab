@@ -7,6 +7,7 @@ import DashboardLayout from './pages/DashboardLayout'
 import DashboardSessionDetail from './pages/DashboardSessionDetail'
 import AuthExtension from './pages/AuthExtension'
 import Home from './pages/Home'
+import Privacy from './pages/Privacy'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -24,6 +25,7 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<Dashboard />} />
           <Route path=":sessionId" element={<DashboardSessionDetail />} />

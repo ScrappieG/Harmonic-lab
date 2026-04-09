@@ -213,6 +213,49 @@
     box-shadow: 0 16px 34px rgba(41, 38, 31, 0.08);
   }
 
+  .policy-content {
+    @apply text-base leading-7 text-stone-700;
+  }
+
+  .policy-content h2 {
+    @apply mt-12 text-3xl leading-tight tracking-tight text-stone-900 first:mt-0;
+    font-family: "Hedvig Letters Serif", serif;
+  }
+
+  .policy-content h3 {
+    @apply mt-8 text-xl font-semibold tracking-tight text-stone-900;
+  }
+
+  .policy-content h4 {
+    @apply mt-6 text-base font-semibold uppercase tracking-[0.18em] text-stone-500;
+  }
+
+  .policy-content p {
+    @apply mt-4;
+  }
+
+  .policy-content ul {
+    @apply mt-4 space-y-3 pl-6;
+    list-style: disc;
+  }
+
+  .policy-content ul ul {
+    @apply mt-3 space-y-2 pl-6;
+    list-style: circle;
+  }
+
+  .policy-content li::marker {
+    color: rgba(87, 83, 78, 0.8);
+  }
+
+  .policy-content a {
+    @apply font-medium text-lime-900 underline underline-offset-4 transition-colors hover:text-lime-700;
+  }
+
+  .policy-content strong {
+    @apply font-semibold text-stone-900;
+  }
+
 }
 
 @media (prefers-reduced-motion: reduce) {
