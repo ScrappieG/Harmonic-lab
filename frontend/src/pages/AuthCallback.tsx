@@ -37,6 +37,12 @@ function AuthCallback() {
       }
 
       if (returnTo) {
+        if (window.opener && !window.opener.closed) {
+          window.opener.location.href = returnTo
+          window.close()
+          return
+        }
+
         window.location.replace(returnTo)
         return
       }
