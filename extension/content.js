@@ -9,15 +9,17 @@
   // ===== CONFIG =====
   var API_BASE = 'https://api.articuleet.com';
   var DASHBOARD_URL = 'https://articuleet.com/dashboard';
-  var AUTH_APP_ORIGIN = 'https://articuleet.com';
+  var AUTH_APP_ORIGINS = {
+    'https://articuleet.com': true,
+    'https://www.articuleet.com': true,
+  };
   var EXTENSION_AUTH_MESSAGE_TYPE = 'articuleet-extension-auth';
 
   // ===== AUTH STATE =====
   var authedUser = null;
 
   window.addEventListener('message', function (event) {
-    if (event.source !== window) return;
-    if (event.origin !== AUTH_APP_ORIGIN) return;
+    if (!AUTH_APP_ORIGINS[event.origin]) return;
     if (!event.data || event.data.type !== EXTENSION_AUTH_MESSAGE_TYPE) return;
     if (!event.data.access_token) return;
 
