@@ -4,7 +4,9 @@
       if (window.monaco && window.monaco.editor) {
         var models = window.monaco.editor.getModels();
         if (models && models.length > 0) {
-          code = models[0].getValue();
+          var first = models[0] ? models[0].getValue() : '';
+          var second = models[1] ? models[1].getValue() : '';
+          code = first && first.trim() ? first : second;
         }
       }
     } catch (e) {}

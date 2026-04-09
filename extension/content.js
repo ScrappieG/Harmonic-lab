@@ -416,6 +416,7 @@
           
           console.log('[articuLeet] Saved ' + key + ': ' + Math.round(s.blob.size / 1024) + 'KB');
         }
+        console.log('[articuLeet]' + sectionNames[key] + ' duration: ' + s.seconds + 's (' + fmt(s.seconds) + ')');
         s.chunks = [];
         s.recorder = null;
         s.recording = false;
@@ -872,7 +873,7 @@
           }, token),
           apiPost('/sessions/finish', {
             session_id: sessionId,
-            total_time: totalSeconds,
+            total_time: Math.floor(totalSeconds / 60),
           }, token),
         ]).then(function () {
           return scores;
@@ -1092,7 +1093,9 @@
 
   // ===== LOGIN BUTTON =====
   root.querySelector('#btn-google-signin').addEventListener('click', function () {
-    window.open('https://articuleet.com/auth/extension', '_blank');
+    var authUrl = new URL('https://articuleet.com/auth/extension');
+    authUrl.searchParams.set('returnTo', window.location.href);
+    window.open(authUrl.toString(), '_blank');
   });
 
   // ===== DASHBOARD BUTTON =====
