@@ -9,9 +9,22 @@
   // ===== CONFIG =====
   var API_BASE = 'https://api.articuleet.com';
   var DASHBOARD_URL = 'https://articuleet.com/dashboard';
+  var AUTH_APP_ORIGIN = 'https://articuleet.com';
+  var EXTENSION_AUTH_MESSAGE_TYPE = 'articuleet-extension-auth';
 
   // ===== AUTH STATE =====
   var authedUser = null;
+
+  window.addEventListener('message', function (event) {
+    if (event.source !== window) return;
+    if (event.origin !== AUTH_APP_ORIGIN) return;
+    if (!event.data || event.data.type !== EXTENSION_AUTH_MESSAGE_TYPE) return;
+    if (!event.data.access_token) return;
+
+    chrome.storage.local.set({ access_token: event.data.access_token }, function () {
+      console.log('[articuLeet] Received auth token from auth callback');
+    });
+  });
 
   // ===== PAGE SCRAPERS =====
   function getCode() {
