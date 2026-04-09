@@ -55,6 +55,42 @@
 
   var problemName = getProblemName();
 
+  function getEditorCode() {
+    return new Promise(function (resolve) {
+      var timeout;
+
+      function onMessage(event) {
+        if (event.source !== window) return;
+        if (event.data && event.data.type === '__articuLeet_code_result__') {
+          window.removeEventListener('message', onMessage);
+          clearTimeout(timeout);
+          var code = event.data.code || '';
+          if (code) {
+            console.log('[articuLeet] Scraped code from Monaco (' + code.length + ' chars)');
+          } else {
+            console.warn('[articuLeet] No code found in editor');
+          }
+          resolve(code);
+        }
+      }
+
+      window.addEventListener('message', onMessage);
+
+      // Inject via a file URL instead of inline script
+      var script = document.createElement('script');
+      script.src = chrome.runtime.getURL('scrape-code.js');
+      document.documentElement.appendChild(script);
+      script.remove();
+
+      // Timeout fallback
+      timeout = setTimeout(function () {
+        window.removeEventListener('message', onMessage);
+        console.warn('[articuLeet] Code scrape timed out');
+        resolve('');
+      }, 2000);
+    });
+  }
+
   function retryName() {
     var name = getProblemName();
     if (name !== slugToTitle(match[1])) {
@@ -311,12 +347,32 @@
     }
   }
 
-  // ===== RECORDING =====
   function startRec(key) {
     return getMic().then(function (stream) {
       var s = sec[key];
       s.chunks = [];
-      s.recorder = new MediaRecorder(stream);
+      
+      // Try to use a format Whisper handles well
+      var mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = ''; // let browser decide
+      }
+      
+      console.log('[articuLeet] Recording ' + key + ' with mimeType:', mimeType || '(browser default)');
+      
+      var options = {};
+      if (mimeType) options.mimeType = mimeType;
+      
+      s.recorder = new MediaRecorder(stream, options);
+      
+      console.log('[articuLeet] Actual recorder mimeType:', s.recorder.mimeType);
+      
       s.recorder.ondataavailable = function (e) {
         if (e.data.size > 0) s.chunks.push(e.data);
       };
@@ -344,9 +400,20 @@
         resolve();
         return;
       }
+      
+      // Save mimeType before the stop event (recorder may be gone by then)
+      var recorderMimeType = s.recorder.mimeType || 'audio/webm';
+      
       s.recorder.addEventListener('stop', function () {
         if (s.chunks.length > 0) {
-          s.blob = new Blob(s.chunks, { type: 'audio/webm' });
+          s.blob = new Blob(s.chunks, { type: recorderMimeType });
+          
+          console.log('[articuLeet] === BLOB DEBUG ' + key + ' ===');
+          console.log('  Chunks:', s.chunks.length);
+          console.log('  Blob size:', s.blob.size, 'bytes');
+          console.log('  Blob type:', s.blob.type);
+          console.log('  Recorder mimeType was:', recorderMimeType);
+          
           console.log('[articuLeet] Saved ' + key + ': ' + Math.round(s.blob.size / 1024) + 'KB');
         }
         s.chunks = [];
@@ -464,23 +531,28 @@
       el.innerHTML = html;
     }
 
-    var comm = data.Communication || 0;
-    var ps   = data.Ps || 0;
-    var code = data.code || 0;
+    // Support both backend format and analyze format
+    var comm = data.score_comm || data.Communication || 0;
+    var ps   = data.score_ps || data.Ps || 0;
+    var code = data.score_technical || data.code || 0;
 
     renderDots('fb-communication', comm, 4);
     renderDots('fb-ps', ps, 4);
     renderDots('fb-code', code, 4);
 
-    var overall = Math.round((comm + ps + code) / 3);
+    var overall = data.score_overall || Math.round((comm + ps + code) / 3);
     renderDots('fb-overall', overall, 4);
+
+    // Support both "Pass" (from analyze) and "pass" (from DB)
+    var passed = data.Pass;
+    if (passed === undefined) passed = data.pass;
 
     var badge = root.querySelector('#fb-pass-fail');
     if (badge) {
-      if (data.Pass === true) {
+      if (passed === true) {
         badge.textContent = 'PASS';
         badge.className = 'pass-fail-badge pass';
-      } else if (data.Pass === false) {
+      } else if (passed === false) {
         badge.textContent = 'FAIL';
         badge.className = 'pass-fail-badge fail';
       } else {
@@ -491,7 +563,7 @@
 
     var takeaway = root.querySelector('#fb-takeaway');
     if (takeaway) {
-      takeaway.textContent = data.overall_takeaway || '';
+      takeaway.textContent = data.overall_takeaway || data.feedback_overall || '';
     }
   }
 
@@ -642,8 +714,26 @@
   }
 
   function apiUploadAudio(blob, token) {
+    var ext = 'webm';
+    var mime = blob.type || 'audio/webm';
+    if (mime.indexOf('mp4') !== -1) ext = 'mp4';
+    if (mime.indexOf('ogg') !== -1) ext = 'ogg';
+    
+    var filename = 'recording.' + ext;
+    
+    console.log('[articuLeet] === UPLOAD DEBUG ===');
+    console.log('  Blob size:', blob.size, 'bytes');
+    console.log('  Blob type:', blob.type);
+    console.log('  Filename:', filename);
+
     var form = new FormData();
-    form.append('audio', blob, 'recording.webm');
+    form.append('audio', blob, filename);
+
+    // DEBUG: verify FormData contents
+    for (var pair of form.entries()) {
+      console.log('  FormData:', pair[0], pair[1].name, pair[1].size, pair[1].type);
+    }
+
     return fetch(API_BASE + '/transcribe', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token },
@@ -659,31 +749,41 @@
         });
       }
       return res.json();
+    }).then(function (result) {
+      console.log('  Transcript:', result.text ? result.text.substring(0, 100) : '(empty)');
+      return result;
     });
   }
 
   // ===== UPLOAD & ANALYZE SESSION =====
-  var lastSessionBlobs = null; // stored for retry
+  var lastSessionBlobs = null;
 
   function uploadSession() {
     var token;
     var sessionId;
     var transcripts = {};
+    var userCode = '';
 
     showFeedbackLoading();
 
-    // Store blobs for potential retry
     lastSessionBlobs = {};
     sectionKeys.forEach(function (key) {
       lastSessionBlobs[key] = sec[key].blob;
     });
 
-    return getAuthToken()
+    return getEditorCode()
+      .then(function (code) {
+        userCode = code;
+        console.log('[articuLeet] ===== USER CODE =====');
+        console.log(userCode || '(no code found)');
+        console.log('[articuLeet] ====================');
+
+        return getAuthToken();
+      })
       .then(function (t) {
         token = t;
         console.log('[articuLeet] Creating session...');
 
-        // 1. Create session
         return apiPost('/sessions/start', {
           problem_name: problemName,
           problem_url: window.location.href,
@@ -693,7 +793,6 @@
         sessionId = session.id;
         console.log('[articuLeet] Session created:', sessionId);
 
-        // 2. Transcribe each recorded section (parallel)
         var jobs = sectionKeys.map(function (key) {
           var blob = lastSessionBlobs[key];
           if (!blob) {
@@ -703,41 +802,45 @@
           console.log('[articuLeet] Transcribing ' + key + ' (' + Math.round(blob.size / 1024) + 'KB)...');
           return apiUploadAudio(blob, token).then(function (result) {
             transcripts[key] = result.text;
-            console.log('[articuLeet] ' + key + ': ' + result.text.substring(0, 60) + '...');
           });
         });
 
         return Promise.all(jobs);
       })
       .then(function () {
-        // 3. Save raw transcript & details to database
+        console.log('[articuLeet] ===== TRANSCRIPTS =====');
+        sectionKeys.forEach(function (key) {
+          console.log('[articuLeet] --- ' + sectionNames[key] + ' ---');
+          console.log(transcripts[key] || '(skipped)');
+          console.log('');
+        });
+        console.log('[articuLeet] =======================');
+
+        // Combined transcript for saving to DB
         var combined = sectionKeys.map(function (key) {
           return '## ' + sectionNames[key] + '\n' + (transcripts[key] || '(skipped)');
         }).join('\n\n');
-
-        var problemStatement = getProblemStatement();
-        var code = getCode();
 
         console.log('[articuLeet] Saving transcript & details...');
 
         return apiPost('/sessions/details', {
           session_id: sessionId,
           transcript: combined,
-          code: code,
-          problem_statement: problemStatement,
+          code: userCode,
+          problem_statement: problemName,
         }, token).then(function () {
-          return { code: code, problemStatement: problemStatement };
+          return combined;
         });
       })
-      .then(function (ctx) {
+      .then(function (combined) {
         console.log('[articuLeet] Analyzing transcript...');
 
-        // 4. Send to AI for analysis (sections + code + problem statement)
+        // Send individual sections to /analyze (matches AnalyzeRequest schema)
         return apiPost('/analyze', {
-          code: ctx.code,
-          problem_statement: ctx.problemStatement || problemName,
+          code: userCode,
+          problem_statement: problemName,
           constraints: '',
-          language: 'Python',
+          language: '',
           section_1: transcripts.sec1 || '',
           section_2: transcripts.sec2 || '',
           section_3: transcripts.sec3 || '',
@@ -746,14 +849,27 @@
         }, token);
       })
       .then(function (scores) {
-        console.log('[articuLeet] Analysis complete:', scores);
+        console.log('[articuLeet] ===== ANALYSIS RESULTS =====');
+        console.log(JSON.stringify(scores, null, 2));
+        console.log('[articuLeet] ============================');
 
-        // 5. Save scores + finish session (parallel) — /analyze already returns DB-ready fields
         var totalSeconds = 0;
         sectionKeys.forEach(function (k) { totalSeconds += sec[k].seconds; });
 
         return Promise.all([
-          apiPost('/sessions/score', Object.assign({ session_id: sessionId }, scores), token),
+          apiPost('/sessions/score', {
+            session_id: sessionId,
+            score_overall: scores.score_overall || 0,
+            feedback_overall: scores.feedback_overall || '',
+            score_comm: scores.score_comm || 0,
+            feedback_comm: scores.feedback_comm || '',
+            score_ps: scores.score_ps || 0,
+            feedback_ps: scores.feedback_ps || '',
+            score_technical: scores.score_technical || 0,
+            feedback_technical: scores.feedback_technical || '',
+            pass: scores.pass !== undefined ? scores.pass : false,
+            overall_takeaway: scores.overall_takeaway || '',
+          }, token),
           apiPost('/sessions/finish', {
             session_id: sessionId,
             total_time: totalSeconds,
@@ -763,7 +879,6 @@
         });
       })
       .then(function (scores) {
-        // 7. Show results in the UI
         updateFeedback(scores);
         showFeedbackResults();
         console.log('[articuLeet] Session saved successfully!');

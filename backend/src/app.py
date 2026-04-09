@@ -51,8 +51,27 @@ async def transcribe(audio: UploadFile, request: Request):
     api_key = get_api_key(request)
 
     data = await audio.read()
+    
+    # Determine correct filename and content type
+    filename = audio.filename or "recording.webm"
+    content_type = audio.content_type or "audio/webm"
+    
+    if not any(filename.endswith(ext) for ext in ['.mp3', '.mp4', '.mpeg', '.mpga', '.m4a', '.wav', '.webm']):
+        filename = "recording.webm"
+    
+    # If content type is generic, fix it based on extension
+    if content_type == "application/octet-stream":
+        if filename.endswith('.webm'):
+            content_type = "audio/webm"
+        elif filename.endswith('.mp4'):
+            content_type = "audio/mp4"
+        elif filename.endswith('.wav'):
+            content_type = "audio/wav"
+
+    print(f"[transcribe] filename={filename}, content_type={content_type}, size={len(data)} bytes")
+
     files = {
-        "file": (audio.filename or "audio.wav", data, audio.content_type or "application/octet-stream"),
+        "file": (filename, data, content_type),
     }
     form = {"model": "whisper-1"}
     headers = {"Authorization": f"Bearer {api_key}"}
@@ -64,6 +83,9 @@ async def transcribe(audio: UploadFile, request: Request):
             data=form,
             files=files,
         )
+
+    print(f"[transcribe] whisper status={response.status_code}")
+    print(f"[transcribe] whisper response={response.text[:200]}")
 
     if response.status_code >= 400:
         raise HTTPException(status_code=response.status_code, detail=response.text)
