@@ -129,12 +129,12 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
         >
           <defs>
             <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.2 : 0.14}>
+              <stop offset="0%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.22 : 0.18}>
                 {!reduceMotion ? (
                   <animate
                     attributeName="stop-opacity"
-                    values="0.14;0.42;0.14"
-                    dur="3900ms"
+                    values="0.18;0.58;0.18"
+                    dur="5000ms"
                     repeatCount="indefinite"
                     calcMode="spline"
                     keyTimes="0;0.5;1"
@@ -142,12 +142,12 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
                   />
                 ) : null}
               </stop>
-              <stop offset="100%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.14 : 0.1}>
+              <stop offset="100%" stopColor="var(--color-score)" stopOpacity={reduceMotion ? 0.16 : 0.12}>
                 {!reduceMotion ? (
                   <animate
                     attributeName="stop-opacity"
-                    values="0.08;0.12;0.08"
-                    dur="3900ms"
+                    values="0.1;0.22;0.1"
+                    dur="5000ms"
                     repeatCount="indefinite"
                     calcMode="spline"
                     keyTimes="0;0.5;1"
