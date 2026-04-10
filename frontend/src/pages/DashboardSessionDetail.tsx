@@ -20,9 +20,11 @@ import { deleteDashboardSession, fetchDashboardSessionDetail } from '@/lib/dashb
 import { supabase } from '@/lib/supabase'
 import { useDashboardLayoutContext } from './DashboardLayout'
 
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
 })
 
 const revealUp: Variants = {
@@ -43,14 +45,14 @@ const staggerContainer: Variants = {
   },
 }
 
-function formatDateLabel(createdAt: string) {
+function formatDateTimeLabel(createdAt: string) {
   const parsedDate = new Date(createdAt)
   if (Number.isNaN(parsedDate.getTime())) return createdAt
-  return dateFormatter.format(parsedDate)
+  return dateTimeFormatter.format(parsedDate)
 }
 
 function formatMinutes(totalTimeMinutes: number | null) {
-  return typeof totalTimeMinutes === 'number' ? `${totalTimeMinutes}m` : '—'
+  return typeof totalTimeMinutes === 'number' ? `${totalTimeMinutes} mins` : '—'
 }
 
 function formatScore(score: number | null) {
@@ -172,9 +174,10 @@ function SessionDetailContent({ detail, reduceMotion }: { detail: SessionDetailD
         animate={reduceMotion ? undefined : 'visible'}
         variants={reduceMotion ? undefined : revealUp}
       >
-        <p className="text-xs text-stone-500 dark:text-stone-400 md:text-sm">
-          {formatDateLabel(session.createdAt)} <span aria-hidden>·</span> {formatMinutes(session.totalTimeMinutes)}{' '}
-          <span aria-hidden>·</span> {formatScore(score.scoreOverall)}/4
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-500 dark:text-stone-400 md:text-base">
+          <span>{formatDateTimeLabel(session.createdAt)}</span>
+          <span aria-hidden className="h-4 w-px bg-stone-300 dark:bg-stone-700" />
+          <span>{formatMinutes(session.totalTimeMinutes)}</span>
         </p>
       </motion.div>
 
