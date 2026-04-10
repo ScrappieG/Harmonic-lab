@@ -95,7 +95,7 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
   const reduceMotion = useReducedMotion() ?? false
   const [chartKey, setChartKey] = useState(0)
   const [isChartReady, setIsChartReady] = useState(false)
-  const trendSignature = trend.map(({ date, score }) => `${date}:${score}`).join('|')
+  const trendSignature = trend.map(({ x, date, score }) => `${x}:${date}:${score}`).join('|')
 
   useEffect(() => {
     if (trend.length === 0) {
@@ -170,11 +170,12 @@ function TrendChart({ trend }: { trend: SessionTrendPoint[] }) {
           ) : null}
           <CartesianGrid vertical={false} stroke="rgb(214 211 209)" strokeDasharray="4 4" />
           <XAxis
-            dataKey="date"
+            dataKey="x"
             axisLine={false}
             tickLine={false}
             tickMargin={10}
             interval={0}
+            tickFormatter={(_, index) => trend[index]?.date ?? ''}
             className="text-xs text-stone-500 dark:text-stone-400"
           />
           <YAxis

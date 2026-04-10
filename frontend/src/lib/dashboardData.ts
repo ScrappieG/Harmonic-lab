@@ -159,7 +159,11 @@ export async function fetchDashboardHomeData(): Promise<DashboardHomeData> {
       const date = Number.isNaN(parsedDate.getTime())
         ? session.created_at
         : new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(parsedDate)
-      return { date, score: scoreBySession.get(session.id) as number }
+      return {
+        x: session.id,
+        date,
+        score: scoreBySession.get(session.id) as number,
+      }
     })
 
   return {
