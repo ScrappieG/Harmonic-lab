@@ -1,17 +1,30 @@
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeft, ChevronDown, ExternalLink, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import type { SessionDetailData } from '@/components/dashboard/types'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { fetchDashboardSessionDetail } from '@/lib/dashboardData'
+import { deleteDashboardSession, fetchDashboardSessionDetail } from '@/lib/dashboardData'
 import { supabase } from '@/lib/supabase'
 import { useDashboardLayoutContext } from './DashboardLayout'
 
-const dateFormatter = new Intl.DateTimeFormat('en-US', {
+const dateTimeFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
 })
 
 const revealUp: Variants = {
@@ -32,14 +45,14 @@ const staggerContainer: Variants = {
   },
 }
 
-function formatDateLabel(createdAt: string) {
+function formatDateTimeLabel(createdAt: string) {
   const parsedDate = new Date(createdAt)
   if (Number.isNaN(parsedDate.getTime())) return createdAt
-  return dateFormatter.format(parsedDate)
+  return dateTimeFormatter.format(parsedDate)
 }
 
 function formatMinutes(totalTimeMinutes: number | null) {
-  return typeof totalTimeMinutes === 'number' ? `${totalTimeMinutes}m` : '—'
+  return typeof totalTimeMinutes === 'number' ? `${totalTimeMinutes} mins` : '—'
 }
 
 function formatScore(score: number | null) {
@@ -76,6 +89,80 @@ function FeedbackCard({
   )
 }
 
+type TranscriptSection = {
+  heading: string
+  body: string
+}
+
+function parseTranscriptSections(transcript: string | null | undefined): TranscriptSection[] {
+  if (!transcript) return []
+
+  const normalizedTranscript = transcript.trim()
+  if (!normalizedTranscript) return []
+
+  const sectionMatches = Array.from(normalizedTranscript.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+.+|\Z)/gm))
+  if (sectionMatches.length === 0) {
+    return [{ heading: 'Transcript', body: normalizedTranscript }]
+  }
+
+  return sectionMatches
+    .map((match) => ({
+      heading: match[1].trim(),
+      body: match[2].trim(),
+    }))
+    .filter((section) => section.heading && section.body)
+}
+
+function TranscriptAccordion({ transcript }: { transcript: string | null | undefined }) {
+  const transcriptSections = parseTranscriptSections(transcript)
+  if (transcriptSections.length === 0) return null
+
+  return (
+    <section className="mt-8">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">Transcript</h2>
+          <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400 md:text-base">
+            Expand any section to review how you talked through the problem.
+          </p>
+        </div>
+        <span className="brand-mono rounded-full border border-stone-300/90 bg-stone-50/85 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-stone-500 dark:border-stone-700 dark:bg-stone-900/85 dark:text-stone-400">
+          {transcriptSections.length} sections
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {transcriptSections.map((section, index) => (
+          <details
+            key={`${section.heading}-${index}`}
+            className="dashboard-hover-card group overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/85 shadow-[0_1px_0_rgba(0,0,0,0.02)] open:border-lime-900/30 open:bg-lime-50/65 dark:border-stone-800 dark:bg-stone-900/80 dark:open:border-lime-700/35 dark:open:bg-stone-900"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 marker:content-none md:px-5">
+              <div className="min-w-0">
+                <p className="brand-mono text-[11px] uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+                  Section {index + 1}
+                </p>
+                <h3 className="brand-serif mt-1 text-xl leading-tight text-stone-900 dark:text-stone-100 md:text-2xl">
+                  {section.heading}
+                </h3>
+              </div>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-stone-300/90 bg-stone-100/90 text-stone-500 transition-transform duration-200 group-open:rotate-180 group-open:border-lime-900/20 group-open:text-lime-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:group-open:border-lime-700/35 dark:group-open:text-lime-400">
+                <ChevronDown className="size-4" />
+              </span>
+            </summary>
+
+            <div className="border-t border-stone-300/80 bg-white/55 px-4 py-4 dark:border-stone-800 dark:bg-stone-950/35 md:px-5 md:py-5">
+              <p className="text-base leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-200 md:text-lg">
+                {section.body}
+              </p>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 function SessionDetailContent({ detail, reduceMotion }: { detail: SessionDetailData; reduceMotion: boolean }) {
   const { session, score, problemDetails } = detail
 
@@ -87,9 +174,10 @@ function SessionDetailContent({ detail, reduceMotion }: { detail: SessionDetailD
         animate={reduceMotion ? undefined : 'visible'}
         variants={reduceMotion ? undefined : revealUp}
       >
-        <p className="text-xs text-stone-500 dark:text-stone-400 md:text-sm">
-          {formatDateLabel(session.createdAt)} <span aria-hidden>·</span> {formatMinutes(session.totalTimeMinutes)}{' '}
-          <span aria-hidden>·</span> {formatScore(score.scoreOverall)}/4
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-stone-500 dark:text-stone-400 md:text-base">
+          <span>{formatDateTimeLabel(session.createdAt)}</span>
+          <span aria-hidden className="h-4 w-px bg-stone-300 dark:bg-stone-700" />
+          <span>{formatMinutes(session.totalTimeMinutes)}</span>
         </p>
       </motion.div>
 
@@ -190,6 +278,14 @@ function SessionDetailContent({ detail, reduceMotion }: { detail: SessionDetailD
             <code>{problemDetails.code ?? '# No code captured for this session.'}</code>
           </pre>
         </article>
+
+        <motion.div
+          initial={reduceMotion ? false : 'hidden'}
+          animate={reduceMotion ? undefined : 'visible'}
+          variants={reduceMotion ? undefined : revealUp}
+        >
+          <TranscriptAccordion transcript={problemDetails.transcript} />
+        </motion.div>
       </motion.section>
     </>
   )
@@ -268,12 +364,18 @@ function SessionDetailSkeleton() {
 
 function DashboardSessionDetail() {
   const reduceMotion = useReducedMotion() ?? false
+  const navigate = useNavigate()
   const { sessionId } = useParams()
-  const { dashboardData } = useDashboardLayoutContext()
+  const { dashboardData, reloadDashboard } = useDashboardLayoutContext()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [detail, setDetail] = useState<SessionDetailData | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
   const title = detail?.session.problemName ?? 'Session'
 
   const loadDetail = useCallback(async () => {
@@ -312,6 +414,57 @@ function DashboardSessionDetail() {
     }
   }, [dashboardData])
 
+  useEffect(() => {
+    if (!isActionsMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!actionsMenuRef.current?.contains(event.target as Node)) {
+        setIsActionsMenuOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsActionsMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isActionsMenuOpen])
+
+  const handleDelete = useCallback(async () => {
+    if (!detail || !sessionId || isDeleting) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      await deleteDashboardSession(sessionId)
+      setIsDeleteDialogOpen(false)
+      setIsActionsMenuOpen(false)
+      await reloadDashboard()
+      navigate('/dashboard', { replace: true })
+    } catch (deleteSessionError) {
+      const message = deleteSessionError instanceof Error ? deleteSessionError.message : 'Failed to delete session.'
+      setDeleteError(message)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [detail, isDeleting, navigate, reloadDashboard, sessionId])
+
+  const handleOpenProblem = useCallback(() => {
+    const problemUrl = detail?.session.problemUrl
+    if (!problemUrl) return
+    setIsActionsMenuOpen(false)
+    window.open(problemUrl, '_blank', 'noopener,noreferrer')
+  }, [detail])
+
   return (
     <>
       <motion.div
@@ -328,14 +481,99 @@ function DashboardSessionDetail() {
       {isLoading ? (
         <Skeleton className="mt-3 h-10 w-56 max-w-full rounded-md md:h-12" aria-hidden="true" />
       ) : (
-        <motion.h1
-          className="brand-serif mt-3 text-3xl leading-none tracking-tight text-stone-900 dark:text-stone-100 md:text-4xl"
+        <motion.div
+          className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
           initial={reduceMotion ? false : 'hidden'}
           animate={reduceMotion ? undefined : 'visible'}
           variants={reduceMotion ? undefined : revealUp}
         >
-          {title}
-        </motion.h1>
+          <h1 className="brand-serif text-3xl leading-none tracking-tight text-stone-900 dark:text-stone-100 md:text-4xl">
+            {title}
+          </h1>
+          {detail ? (
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <div ref={actionsMenuRef} className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="rounded-full border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800"
+                  aria-label="Session actions"
+                  aria-haspopup="menu"
+                  aria-expanded={isActionsMenuOpen}
+                  onClick={() => setIsActionsMenuOpen((currentValue) => !currentValue)}
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+
+                <div
+                  className={`absolute right-0 top-full z-20 mt-2 min-w-48 overflow-hidden rounded-xl border border-stone-300/90 bg-stone-50/95 p-1.5 shadow-[0_14px_36px_rgba(20,20,15,0.14)] backdrop-blur-sm transition-opacity dark:border-stone-800 dark:bg-stone-950/95 dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)] ${
+                    isActionsMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+                  }`}
+                  role="menu"
+                  aria-hidden={!isActionsMenuOpen}
+                >
+                  <button
+                    type="button"
+                    onClick={handleOpenProblem}
+                    disabled={!detail.session.problemUrl}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-200/70 disabled:cursor-not-allowed disabled:text-stone-400 disabled:hover:bg-transparent dark:text-stone-200 dark:hover:bg-stone-800/80 dark:disabled:text-stone-500"
+                  >
+                    <ExternalLink className="size-4" />
+                    Open problem
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false)
+                      setIsDeleteDialogOpen(true)
+                    }}
+                    disabled={isDeleting}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-rose-400 disabled:hover:bg-transparent dark:text-rose-300 dark:hover:bg-rose-950/40 dark:disabled:text-rose-500"
+                  >
+                    <Trash2 className="size-4" />
+                    {isDeleting ? 'Deleting...' : 'Delete session'}
+                  </button>
+                </div>
+              </div>
+              {deleteError ? (
+                <p className="max-w-xs text-sm text-rose-700 dark:text-rose-300">{deleteError}</p>
+              ) : null}
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove{' '}
+                      <span className="font-medium text-stone-800 dark:text-stone-200">
+                        {detail.session.problemName ?? 'this session'}
+                      </span>
+                      {' '}and its saved results. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel asChild>
+                      <Button type="button" variant="ghost" className="text-stone-700 dark:text-stone-200">
+                        Cancel
+                      </Button>
+                    </AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => void handleDelete()}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="size-4" />
+                        {isDeleting ? 'Deleting...' : 'Delete session'}
+                      </Button>
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          ) : null}
+        </motion.div>
       )}
 
       {isLoading ? (

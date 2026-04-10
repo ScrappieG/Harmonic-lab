@@ -29,6 +29,7 @@ export type DashboardStats = {
 }
 
 export type SessionTrendPoint = {
+  x: string
   date: string
   score: number
 }
