@@ -1,11 +1,22 @@
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
-import { useCallback, useEffect, useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import { Link, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ArrowLeft, ExternalLink, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import type { SessionDetailData } from '@/components/dashboard/types'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { fetchDashboardSessionDetail } from '@/lib/dashboardData'
+import { deleteDashboardSession, fetchDashboardSessionDetail } from '@/lib/dashboardData'
 import { supabase } from '@/lib/supabase'
 import { useDashboardLayoutContext } from './DashboardLayout'
 
@@ -268,12 +279,18 @@ function SessionDetailSkeleton() {
 
 function DashboardSessionDetail() {
   const reduceMotion = useReducedMotion() ?? false
+  const navigate = useNavigate()
   const { sessionId } = useParams()
-  const { dashboardData } = useDashboardLayoutContext()
+  const { dashboardData, reloadDashboard } = useDashboardLayoutContext()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSignedIn, setIsSignedIn] = useState(false)
   const [detail, setDetail] = useState<SessionDetailData | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
   const title = detail?.session.problemName ?? 'Session'
 
   const loadDetail = useCallback(async () => {
@@ -312,6 +329,57 @@ function DashboardSessionDetail() {
     }
   }, [dashboardData])
 
+  useEffect(() => {
+    if (!isActionsMenuOpen) return
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!actionsMenuRef.current?.contains(event.target as Node)) {
+        setIsActionsMenuOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsActionsMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isActionsMenuOpen])
+
+  const handleDelete = useCallback(async () => {
+    if (!detail || !sessionId || isDeleting) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      await deleteDashboardSession(sessionId)
+      setIsDeleteDialogOpen(false)
+      setIsActionsMenuOpen(false)
+      await reloadDashboard()
+      navigate('/dashboard', { replace: true })
+    } catch (deleteSessionError) {
+      const message = deleteSessionError instanceof Error ? deleteSessionError.message : 'Failed to delete session.'
+      setDeleteError(message)
+    } finally {
+      setIsDeleting(false)
+    }
+  }, [detail, isDeleting, navigate, reloadDashboard, sessionId])
+
+  const handleOpenProblem = useCallback(() => {
+    const problemUrl = detail?.session.problemUrl
+    if (!problemUrl) return
+    setIsActionsMenuOpen(false)
+    window.open(problemUrl, '_blank', 'noopener,noreferrer')
+  }, [detail])
+
   return (
     <>
       <motion.div
@@ -328,14 +396,99 @@ function DashboardSessionDetail() {
       {isLoading ? (
         <Skeleton className="mt-3 h-10 w-56 max-w-full rounded-md md:h-12" aria-hidden="true" />
       ) : (
-        <motion.h1
-          className="brand-serif mt-3 text-3xl leading-none tracking-tight text-stone-900 dark:text-stone-100 md:text-4xl"
+        <motion.div
+          className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
           initial={reduceMotion ? false : 'hidden'}
           animate={reduceMotion ? undefined : 'visible'}
           variants={reduceMotion ? undefined : revealUp}
         >
-          {title}
-        </motion.h1>
+          <h1 className="brand-serif text-3xl leading-none tracking-tight text-stone-900 dark:text-stone-100 md:text-4xl">
+            {title}
+          </h1>
+          {detail ? (
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <div ref={actionsMenuRef} className="relative">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="rounded-full border-stone-300 bg-stone-50 text-stone-700 hover:bg-stone-200 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100 dark:hover:bg-stone-800"
+                  aria-label="Session actions"
+                  aria-haspopup="menu"
+                  aria-expanded={isActionsMenuOpen}
+                  onClick={() => setIsActionsMenuOpen((currentValue) => !currentValue)}
+                >
+                  <MoreHorizontal className="size-4" />
+                </Button>
+
+                <div
+                  className={`absolute right-0 top-full z-20 mt-2 min-w-48 overflow-hidden rounded-xl border border-stone-300/90 bg-stone-50/95 p-1.5 shadow-[0_14px_36px_rgba(20,20,15,0.14)] backdrop-blur-sm transition-opacity dark:border-stone-800 dark:bg-stone-950/95 dark:shadow-[0_16px_40px_rgba(0,0,0,0.4)] ${
+                    isActionsMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+                  }`}
+                  role="menu"
+                  aria-hidden={!isActionsMenuOpen}
+                >
+                  <button
+                    type="button"
+                    onClick={handleOpenProblem}
+                    disabled={!detail.session.problemUrl}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-stone-700 transition-colors hover:bg-stone-200/70 disabled:cursor-not-allowed disabled:text-stone-400 disabled:hover:bg-transparent dark:text-stone-200 dark:hover:bg-stone-800/80 dark:disabled:text-stone-500"
+                  >
+                    <ExternalLink className="size-4" />
+                    Open problem
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsActionsMenuOpen(false)
+                      setIsDeleteDialogOpen(true)
+                    }}
+                    disabled={isDeleting}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-rose-400 disabled:hover:bg-transparent dark:text-rose-300 dark:hover:bg-rose-950/40 dark:disabled:text-rose-500"
+                  >
+                    <Trash2 className="size-4" />
+                    {isDeleting ? 'Deleting...' : 'Delete session'}
+                  </button>
+                </div>
+              </div>
+              {deleteError ? (
+                <p className="max-w-xs text-sm text-rose-700 dark:text-rose-300">{deleteError}</p>
+              ) : null}
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete session?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently remove{' '}
+                      <span className="font-medium text-stone-800 dark:text-stone-200">
+                        {detail.session.problemName ?? 'this session'}
+                      </span>
+                      {' '}and its saved results. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel asChild>
+                      <Button type="button" variant="ghost" className="text-stone-700 dark:text-stone-200">
+                        Cancel
+                      </Button>
+                    </AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={() => void handleDelete()}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="size-4" />
+                        {isDeleting ? 'Deleting...' : 'Delete session'}
+                      </Button>
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          ) : null}
+        </motion.div>
       )}
 
       {isLoading ? (

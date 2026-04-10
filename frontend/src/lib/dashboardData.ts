@@ -229,3 +229,21 @@ export async function fetchDashboardSessionDetail(sessionId: string): Promise<Da
     detail: mapSessionDetail(typedSessionRow, (scoreRow as ScoreRow | null) ?? null, (detailsRow as ProblemDetailsRow | null) ?? null),
   }
 }
+
+export async function deleteDashboardSession(sessionId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be signed in to delete a session.')
+  }
+
+  const { error } = await supabase
+    .from('sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+
+  if (error) throw error
+}
