@@ -274,6 +274,14 @@ async def me(request: Request):
     await _fn("insert_user")(db, user["id"], user["email"])
     return {"id": user["id"], "email": user["email"]}
 
+
+@app.delete("/me")
+async def delete_me(request: Request):
+    user = await get_current_user(request)
+    db = _db(request)
+    result = await _fn("delete_user_account")(db, user["id"])
+    return {"id": user["id"], "email": user.get("email"), **result}
+
 @app.get("/healthz")
 async def healthz():
     return {"ok": True}

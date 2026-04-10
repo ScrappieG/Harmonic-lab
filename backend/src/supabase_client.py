@@ -87,6 +87,19 @@ class SupabaseClient:
         response.raise_for_status()
         return response.json()
 
+    async def delete_auth_user(self, user_id: str, should_soft_delete: bool = False) -> dict:
+        """Delete an auth user via the admin API. Requires service_role credentials."""
+        async with self._httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{self.url}/auth/v1/admin/users/{user_id}",
+                headers=self.headers,
+                params={"should_soft_delete": str(should_soft_delete).lower()},
+            )
+        response.raise_for_status()
+        if not response.content:
+            return {"id": user_id, "deleted": True}
+        return response.json()
+
 
 def get_supabase(request) -> SupabaseClient:
     """Get a SupabaseClient from the Cloudflare Worker env attached to the request."""
