@@ -1,6 +1,6 @@
 import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ExternalLink, MoreHorizontal, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ExternalLink, MoreHorizontal, Trash2 } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import type { SessionDetailData } from '@/components/dashboard/types'
@@ -84,6 +84,80 @@ function FeedbackCard({
       </div>
       <p className="mt-3 text-base leading-relaxed text-stone-600 dark:text-stone-300 md:text-lg">{body ?? 'No feedback available.'}</p>
     </article>
+  )
+}
+
+type TranscriptSection = {
+  heading: string
+  body: string
+}
+
+function parseTranscriptSections(transcript: string | null | undefined): TranscriptSection[] {
+  if (!transcript) return []
+
+  const normalizedTranscript = transcript.trim()
+  if (!normalizedTranscript) return []
+
+  const sectionMatches = Array.from(normalizedTranscript.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+.+|\Z)/gm))
+  if (sectionMatches.length === 0) {
+    return [{ heading: 'Transcript', body: normalizedTranscript }]
+  }
+
+  return sectionMatches
+    .map((match) => ({
+      heading: match[1].trim(),
+      body: match[2].trim(),
+    }))
+    .filter((section) => section.heading && section.body)
+}
+
+function TranscriptAccordion({ transcript }: { transcript: string | null | undefined }) {
+  const transcriptSections = parseTranscriptSections(transcript)
+  if (transcriptSections.length === 0) return null
+
+  return (
+    <section className="mt-8">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 className="brand-serif text-2xl leading-none text-stone-800 dark:text-stone-100 md:text-3xl">Transcript</h2>
+          <p className="mt-2 text-sm leading-relaxed text-stone-500 dark:text-stone-400 md:text-base">
+            Expand any section to review how you talked through the problem.
+          </p>
+        </div>
+        <span className="brand-mono rounded-full border border-stone-300/90 bg-stone-50/85 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-stone-500 dark:border-stone-700 dark:bg-stone-900/85 dark:text-stone-400">
+          {transcriptSections.length} sections
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {transcriptSections.map((section, index) => (
+          <details
+            key={`${section.heading}-${index}`}
+            className="dashboard-hover-card group overflow-hidden rounded-2xl border border-stone-300/90 bg-stone-50/85 shadow-[0_1px_0_rgba(0,0,0,0.02)] open:border-lime-900/30 open:bg-lime-50/65 dark:border-stone-800 dark:bg-stone-900/80 dark:open:border-lime-700/35 dark:open:bg-stone-900"
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 marker:content-none md:px-5">
+              <div className="min-w-0">
+                <p className="brand-mono text-[11px] uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+                  Section {index + 1}
+                </p>
+                <h3 className="brand-serif mt-1 text-xl leading-tight text-stone-900 dark:text-stone-100 md:text-2xl">
+                  {section.heading}
+                </h3>
+              </div>
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border border-stone-300/90 bg-stone-100/90 text-stone-500 transition-transform duration-200 group-open:rotate-180 group-open:border-lime-900/20 group-open:text-lime-900 dark:border-stone-700 dark:bg-stone-800 dark:text-stone-300 dark:group-open:border-lime-700/35 dark:group-open:text-lime-400">
+                <ChevronDown className="size-4" />
+              </span>
+            </summary>
+
+            <div className="border-t border-stone-300/80 bg-white/55 px-4 py-4 dark:border-stone-800 dark:bg-stone-950/35 md:px-5 md:py-5">
+              <p className="text-base leading-relaxed whitespace-pre-wrap text-stone-700 dark:text-stone-200 md:text-lg">
+                {section.body}
+              </p>
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -201,6 +275,14 @@ function SessionDetailContent({ detail, reduceMotion }: { detail: SessionDetailD
             <code>{problemDetails.code ?? '# No code captured for this session.'}</code>
           </pre>
         </article>
+
+        <motion.div
+          initial={reduceMotion ? false : 'hidden'}
+          animate={reduceMotion ? undefined : 'visible'}
+          variants={reduceMotion ? undefined : revealUp}
+        >
+          <TranscriptAccordion transcript={problemDetails.transcript} />
+        </motion.div>
       </motion.section>
     </>
   )
