@@ -415,25 +415,24 @@
         s.recording = false;
         tickStop(key);
         refreshUI(key);
-        releaseMic();
         updateCloseButtons();
         resolve();
         return;
       }
-      
+
       // Save mimeType before the stop event (recorder may be gone by then)
       var recorderMimeType = s.recorder.mimeType || 'audio/webm';
-      
+
       s.recorder.addEventListener('stop', function () {
         if (s.chunks.length > 0) {
           s.blob = new Blob(s.chunks, { type: recorderMimeType });
-          
+
           console.log('[articuLeet] === BLOB DEBUG ' + key + ' ===');
           console.log('  Chunks:', s.chunks.length);
           console.log('  Blob size:', s.blob.size, 'bytes');
           console.log('  Blob type:', s.blob.type);
           console.log('  Recorder mimeType was:', recorderMimeType);
-          
+
           console.log('[articuLeet] Saved ' + key + ': ' + Math.round(s.blob.size / 1024) + 'KB');
         }
         console.log('[articuLeet]' + sectionNames[key] + ' duration: ' + s.seconds + 's (' + fmt(s.seconds) + ')');
@@ -443,7 +442,6 @@
         s.paused = false;
         tickStop(key);
         refreshUI(key);
-        releaseMic();
         updateCloseButtons();
         resolve();
       }, { once: true });
