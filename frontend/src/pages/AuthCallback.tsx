@@ -60,11 +60,15 @@ function AuthCallback() {
           {
             type: EXTENSION_AUTH_MESSAGE_TYPE,
             access_token: session.access_token,
+            refresh_token: session.refresh_token,
           },
           extensionOrigin,
         )
       } else if (session?.access_token && EXTENSION_ID && typeof chrome !== 'undefined') {
-        chrome.runtime.sendMessage(EXTENSION_ID, { access_token: session.access_token })
+        chrome.runtime.sendMessage(EXTENSION_ID, {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        })
       }
 
       if (returnTo) {

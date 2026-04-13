@@ -8,6 +8,9 @@
 
   // ===== CONFIG =====
   var API_BASE = 'https://api.articuleet.com';
+  var SUPABASE_URL = 'https://ernqrywlxvydufdutkaj.supabase.co';
+  //This is fine its supposed to be the public key
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVybnFyeXdseHZ5ZHVmZHV0a2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODc4OTgsImV4cCI6MjA4NTk2Mzg5OH0.hQy_xZnjsFtdRu3RM0Wk6gVQrXh_bgPneU2VzdgFvNE';
   var DASHBOARD_URL = 'https://articuleet.com/dashboard';
   var AUTH_APP_ORIGINS = {
     'https://articuleet.com': true,
@@ -23,8 +26,10 @@
     if (!event.data || event.data.type !== EXTENSION_AUTH_MESSAGE_TYPE) return;
     if (!event.data.access_token) return;
 
-    chrome.storage.local.set({ access_token: event.data.access_token }, function () {
-      console.log('[articuLeet] Received auth token from auth callback');
+    var tokenData = { access_token: event.data.access_token };
+    if (event.data.refresh_token) tokenData.refresh_token = event.data.refresh_token;
+    chrome.storage.local.set(tokenData, function () {
+      console.log('[articuLeet] Received auth tokens from auth callback');
     });
   });
 
@@ -634,15 +639,47 @@
   }
 
   // ===== AUTH =====
-  function getAuthToken() {
-    return new Promise(function (resolve, reject) {
-      chrome.storage.local.get('access_token', function (result) {
-        if (result.access_token) {
-          resolve(result.access_token);
-        } else {
-          reject(new Error('No auth token'));
-        }
+  function getStoredTokens() {
+    return new Promise(function (resolve) {
+      chrome.storage.local.get(['access_token', 'refresh_token'], function (result) {
+        resolve(result);
       });
+    });
+  }
+
+  function refreshAccessToken(refreshToken) {
+    return fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Refresh failed');
+      return res.json();
+    }).then(function (data) {
+      var tokenData = { access_token: data.access_token };
+      if (data.refresh_token) tokenData.refresh_token = data.refresh_token;
+      return new Promise(function (resolve) {
+        chrome.storage.local.set(tokenData, function () {
+          console.log('[articuLeet] Token refreshed successfully');
+          resolve(data.access_token);
+        });
+      });
+    });
+  }
+
+  function getAuthToken() {
+    return getStoredTokens().then(function (tokens) {
+      if (!tokens.access_token) throw new Error('No auth token');
+
+      // Check if token is expired or about to expire (within 60s)
+      var payload = decodeJwtPayload(tokens.access_token);
+      var now = Math.floor(Date.now() / 1000);
+      if (payload && payload.exp && payload.exp < now + 60 && tokens.refresh_token) {
+        console.log('[articuLeet] Token expired/expiring, refreshing...');
+        return refreshAccessToken(tokens.refresh_token);
+      }
+
+      return tokens.access_token;
     });
   }
 
