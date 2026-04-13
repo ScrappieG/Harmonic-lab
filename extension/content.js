@@ -742,18 +742,15 @@
     console.log('  Blob type:', blob.type);
     console.log('  Filename:', filename);
 
-    var form = new FormData();
-    form.append('audio', blob, filename);
-
-    // DEBUG: verify FormData contents
-    for (var pair of form.entries()) {
-      console.log('  FormData:', pair[0], pair[1].name, pair[1].size, pair[1].type);
-    }
-
     return fetch(API_BASE + '/transcribe', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
-      body: form,
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/octet-stream',
+        'X-Filename': filename,
+        'X-Content-Type': blob.type || 'audio/webm',
+      },
+      body: blob,
     }).then(function (res) {
       if (res.status === 401) {
         onAuthFail();

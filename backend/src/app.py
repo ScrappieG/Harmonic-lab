@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from workers import WorkerEntrypoint
@@ -47,26 +47,13 @@ def root():
     return {"message": "ArticuLeet API"}
 
 @app.post("/transcribe")
-async def transcribe(audio: UploadFile, request: Request):
+async def transcribe(request: Request):
     api_key = get_api_key(request)
 
-    data = await audio.read()
-    
-    # Determine correct filename and content type
-    filename = audio.filename or "recording.webm"
-    content_type = audio.content_type or "audio/webm"
-    
-    if not any(filename.endswith(ext) for ext in ['.mp3', '.mp4', '.mpeg', '.mpga', '.m4a', '.wav', '.webm']):
-        filename = "recording.webm"
-    
-    # If content type is generic, fix it based on extension
-    if content_type == "application/octet-stream":
-        if filename.endswith('.webm'):
-            content_type = "audio/webm"
-        elif filename.endswith('.mp4'):
-            content_type = "audio/mp4"
-        elif filename.endswith('.wav'):
-            content_type = "audio/wav"
+    data = await request.body()
+    filename = request.headers.get("x-filename", "recording.webm")
+    content_type = request.headers.get("x-content-type", "audio/webm")
+    content_type = content_type.split(";")[0].strip()
 
     print(f"[transcribe] filename={filename}, content_type={content_type}, size={len(data)} bytes")
 
