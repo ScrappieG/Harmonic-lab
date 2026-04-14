@@ -100,17 +100,41 @@ function parseTranscriptSections(transcript: string | null | undefined): Transcr
   const normalizedTranscript = transcript.trim()
   if (!normalizedTranscript) return []
 
-  const sectionMatches = Array.from(normalizedTranscript.matchAll(/^##\s+(.+)\n([\s\S]*?)(?=^##\s+.+|\Z)/gm))
-  if (sectionMatches.length === 0) {
+  const transcriptLines = normalizedTranscript.split(/\r?\n/)
+  const sections: TranscriptSection[] = []
+  let currentHeading: string | null = null
+  let currentBodyLines: string[] = []
+
+  function pushCurrentSection() {
+    if (!currentHeading) return
+
+    const body = currentBodyLines.join('\n').trim()
+    if (!body) return
+
+    sections.push({
+      heading: currentHeading,
+      body,
+    })
+  }
+
+  for (const line of transcriptLines) {
+    if (line.startsWith('## ')) {
+      pushCurrentSection()
+      currentHeading = line.replace(/^##\s+/, '').trim()
+      currentBodyLines = []
+      continue
+    }
+
+    currentBodyLines.push(line)
+  }
+
+  pushCurrentSection()
+
+  if (sections.length === 0) {
     return [{ heading: 'Transcript', body: normalizedTranscript }]
   }
 
-  return sectionMatches
-    .map((match) => ({
-      heading: match[1].trim(),
-      body: match[2].trim(),
-    }))
-    .filter((section) => section.heading && section.body)
+  return sections
 }
 
 function TranscriptAccordion({ transcript }: { transcript: string | null | undefined }) {
