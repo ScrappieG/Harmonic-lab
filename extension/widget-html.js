@@ -41,7 +41,7 @@ const WIDGET_HTML = `
     <p class="session-label"><em>Start Session for:</em><br><strong class="problem-name">Two Sum</strong></p>
     <button class="btn-primary" id="btn-start-recording">Begin →</button>
     <div class="row-center gap-12">
-      <button class="btn-outline">View Dashboard</button>
+      <button class="btn-outline" id="btn-dashboard">View Dashboard</button>
       <button class="icon-btn help-btn">?</button>
     </div>
   </section>
@@ -49,6 +49,7 @@ const WIDGET_HTML = `
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 
@@ -99,6 +100,7 @@ const WIDGET_HTML = `
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 
@@ -150,6 +152,7 @@ const WIDGET_HTML = `
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 
@@ -201,6 +204,7 @@ const WIDGET_HTML = `
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 
@@ -252,6 +256,7 @@ const WIDGET_HTML = `
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 
@@ -303,6 +308,7 @@ const WIDGET_HTML = `
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 
@@ -327,52 +333,72 @@ const WIDGET_HTML = `
     <div class="section-times"></div>
     <hr class="divider-light">
 
-    <div class="pass-fail-wrap">
-      <span class="pass-fail-badge" id="fb-pass-fail">—</span>
+    <!-- Loading state while analyzing -->
+    <div id="fb-loading" class="feedback-loading">
+      <div class="loading-dots-anim"><span></span><span></span><span></span></div>
+      <p class="loading-text">Analyzing your session…</p>
+      <p class="loading-sub">Transcribing audio &amp; generating feedback</p>
     </div>
 
-    <p class="feedback-heading">Quick Feedback</p>
-    <div class="feedback">
-      <div class="fb-row">
-        <span>Communication</span>
-        <span class="rating-dots" id="fb-communication">
-          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
-        </span>
-      </div>
-      <div class="fb-row">
-        <span>Problem Solving</span>
-        <span class="rating-dots" id="fb-ps">
-          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
-        </span>
-      </div>
-      <div class="fb-row">
-        <span>Code</span>
-        <span class="rating-dots" id="fb-code">
-          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
-        </span>
-      </div>
-      <div class="fb-row fb-row-overall">
-        <span>Overall</span>
-        <span class="rating-dots" id="fb-overall">
-          <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
-        </span>
-      </div>
+    <!-- Error state -->
+    <div id="fb-error" class="feedback-error hidden">
+      <p class="error-text">Analysis failed</p>
+      <p class="error-detail" id="fb-error-detail"></p>
+      <button class="btn-outline" id="btn-retry-analysis">Retry</button>
     </div>
 
-    <p class="overall-takeaway" id="fb-takeaway"></p>
+    <!-- Results (hidden until analysis complete) -->
+    <div id="fb-results" class="hidden">
+      <div class="pass-fail-wrap">
+        <span class="pass-fail-badge" id="fb-pass-fail">—</span>
+      </div>
+
+      <p class="feedback-heading">Quick Feedback</p>
+      <div class="feedback">
+        <div class="fb-row">
+          <span>Communication</span>
+          <span class="rating-dots" id="fb-communication">
+            <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+          </span>
+        </div>
+        <div class="fb-row">
+          <span>Problem Solving</span>
+          <span class="rating-dots" id="fb-ps">
+            <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+          </span>
+        </div>
+        <div class="fb-row">
+          <span>Code</span>
+          <span class="rating-dots" id="fb-code">
+            <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+          </span>
+        </div>
+        <div class="fb-row fb-row-overall">
+          <span>Overall</span>
+          <span class="rating-dots" id="fb-overall">
+            <span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span><span class="dot-empty"></span>
+          </span>
+        </div>
+      </div>
+
+      <p class="overall-takeaway" id="fb-takeaway"></p>
+    </div>
 
     <div class="row-center gap-12" style="margin-top:16px">
-      <button class="btn-outline">View Full Analysis</button>
+      <button class="btn-outline" id="btn-view-analysis">View Full Analysis</button>
       <button class="btn-outline" id="btn-new-session">New Session</button>
     </div>
+    <!--
     <div class="row-center gap-12" style="margin-top:10px">
       <button class="btn-outline" id="btn-download-recordings">⬇ Download Recordings</button>
     </div>
+    -->
   </section>
   <hr class="divider">
   <footer class="user-footer">
     <div class="avatar">H</div>
     <div class="user-info"><span class="name">Harmon</span><span class="email">m@example.com</span></div>
+    <button class="btn-signout signout-btn">Sign Out</button>
   </footer>
 </div>
 

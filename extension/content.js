@@ -7,10 +7,47 @@
   if (!match) return;
 
   // ===== CONFIG =====
+  var API_BASE = 'https://api.articuleet.com';
+  var SUPABASE_URL = 'https://ernqrywlxvydufdutkaj.supabase.co';
+  //This is fine its supposed to be the public key
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVybnFyeXdseHZ5ZHVmZHV0a2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzODc4OTgsImV4cCI6MjA4NTk2Mzg5OH0.hQy_xZnjsFtdRu3RM0Wk6gVQrXh_bgPneU2VzdgFvNE';
   var DASHBOARD_URL = 'https://articuleet.com/dashboard';
+  var AUTH_APP_ORIGINS = {
+    'https://articuleet.com': true,
+    'https://www.articuleet.com': true,
+  };
+  var EXTENSION_AUTH_MESSAGE_TYPE = 'articuleet-extension-auth';
 
   // ===== AUTH STATE =====
   var authedUser = null;
+
+  window.addEventListener('message', function (event) {
+    if (!AUTH_APP_ORIGINS[event.origin]) return;
+    if (!event.data || event.data.type !== EXTENSION_AUTH_MESSAGE_TYPE) return;
+    if (!event.data.access_token) return;
+
+    var tokenData = { access_token: event.data.access_token };
+    if (event.data.refresh_token) tokenData.refresh_token = event.data.refresh_token;
+    chrome.storage.local.set(tokenData, function () {
+      console.log('[articuLeet] Received auth tokens from auth callback');
+    });
+  });
+
+  // ===== PAGE SCRAPERS =====
+  function getCode() {
+    try {
+      if (window.monaco && window.monaco.editor) {
+        var models = window.monaco.editor.getModels();
+        if (models && models.length > 0) return models[0].getValue();
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  function getProblemStatement() {
+    var el = document.querySelector('[data-track-load="description_content"]');
+    return el ? el.innerText.trim() : '';
+  }
 
   // ===== GET PROBLEM NAME =====
   function slugToTitle(slug) {
@@ -38,6 +75,42 @@
 
   var problemName = getProblemName();
 
+  function getEditorCode() {
+    return new Promise(function (resolve) {
+      var timeout;
+
+      function onMessage(event) {
+        if (event.source !== window) return;
+        if (event.data && event.data.type === '__articuLeet_code_result__') {
+          window.removeEventListener('message', onMessage);
+          clearTimeout(timeout);
+          var code = event.data.code || '';
+          if (code) {
+            console.log('[articuLeet] Scraped code from Monaco (' + code.length + ' chars)');
+          } else {
+            console.warn('[articuLeet] No code found in editor');
+          }
+          resolve(code);
+        }
+      }
+
+      window.addEventListener('message', onMessage);
+
+      // Inject via a file URL instead of inline script
+      var script = document.createElement('script');
+      script.src = chrome.runtime.getURL('scrape-code.js');
+      document.documentElement.appendChild(script);
+      script.remove();
+
+      // Timeout fallback
+      timeout = setTimeout(function () {
+        window.removeEventListener('message', onMessage);
+        console.warn('[articuLeet] Code scrape timed out');
+        resolve('');
+      }, 2000);
+    });
+  }
+
   function retryName() {
     var name = getProblemName();
     if (name !== slugToTitle(match[1])) {
@@ -56,7 +129,7 @@
 
   var host = document.createElement('div');
   host.id = 'articuleet-host';
-  host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647;';
+  host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647; visibility:hidden;';
   document.body.appendChild(host);
 
   var userClosed = false;
@@ -92,6 +165,46 @@
   root.className = 'widget-root';
   root.innerHTML = WIDGET_HTML;
   shadow.appendChild(root);
+
+  // ===== WAIT FOR ASSETS BEFORE SHOWING =====
+  function revealWidget() {
+    if (userClosed) return;
+    host.style.visibility = 'visible';
+    host.style.opacity = '0';
+    host.offsetHeight; // force reflow
+    host.style.transition = 'opacity 0.2s ease-in';
+    host.style.opacity = '1';
+    console.log('[articuLeet] Widget revealed');
+  }
+
+  // Wait for both widget CSS and fonts to load
+  var cssReady = new Promise(function (resolve) {
+    cssLink.addEventListener('load', resolve);
+    cssLink.addEventListener('error', resolve); // show even if CSS fails
+  });
+
+  var fontsReady = new Promise(function (resolve) {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(resolve);
+    } else {
+      // Fallback for browsers without Font Loading API
+      resolve();
+    }
+  });
+
+  // Also add a maximum wait time so the widget always appears
+  var maxWait = new Promise(function (resolve) {
+    setTimeout(resolve, 3000);
+  });
+
+  Promise.all([cssReady, fontsReady]).then(revealWidget);
+  maxWait.then(function () {
+    // Force reveal if assets are taking too long
+    if (host.style.visibility === 'hidden') {
+      console.warn('[articuLeet] Asset load timeout — force revealing widget');
+      revealWidget();
+    }
+  });
 
   // ===== INJECT PROBLEM NAME =====
   function injectName() {
@@ -134,6 +247,10 @@
         setTimeout(retryName, 1500);
         if (!userClosed) {
           host.style.display = '';
+          host.style.opacity = '0';
+          host.offsetHeight;
+          host.style.transition = 'opacity 0.2s ease-in';
+          host.style.opacity = '1';
         }
       } else {
         host.style.display = 'none';
@@ -218,7 +335,6 @@
     if (!authedUser && key !== 'login') {
       key = 'login';
     }
-
     if (key !== 'mini') lastScreen = key;
     Object.values(screens).forEach(function (s) { s.classList.remove('active'); });
     screens[key].classList.add('active');
@@ -295,12 +411,32 @@
     }
   }
 
-  // ===== RECORDING =====
   function startRec(key) {
     return getMic().then(function (stream) {
       var s = sec[key];
       s.chunks = [];
-      s.recorder = new MediaRecorder(stream);
+      
+      // Try to use a format Whisper handles well
+      var mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = ''; // let browser decide
+      }
+      
+      console.log('[articuLeet] Recording ' + key + ' with mimeType:', mimeType || '(browser default)');
+      
+      var options = {};
+      if (mimeType) options.mimeType = mimeType;
+      
+      s.recorder = new MediaRecorder(stream, options);
+      
+      console.log('[articuLeet] Actual recorder mimeType:', s.recorder.mimeType);
+      
       s.recorder.ondataavailable = function (e) {
         if (e.data.size > 0) s.chunks.push(e.data);
       };
@@ -323,23 +459,33 @@
         s.recording = false;
         tickStop(key);
         refreshUI(key);
-        releaseMic();
         updateCloseButtons();
         resolve();
         return;
       }
+
+      // Save mimeType before the stop event (recorder may be gone by then)
+      var recorderMimeType = s.recorder.mimeType || 'audio/webm';
+
       s.recorder.addEventListener('stop', function () {
         if (s.chunks.length > 0) {
-          s.blob = new Blob(s.chunks, { type: 'audio/webm' });
+          s.blob = new Blob(s.chunks, { type: recorderMimeType });
+
+          console.log('[articuLeet] === BLOB DEBUG ' + key + ' ===');
+          console.log('  Chunks:', s.chunks.length);
+          console.log('  Blob size:', s.blob.size, 'bytes');
+          console.log('  Blob type:', s.blob.type);
+          console.log('  Recorder mimeType was:', recorderMimeType);
+
           console.log('[articuLeet] Saved ' + key + ': ' + Math.round(s.blob.size / 1024) + 'KB');
         }
+        console.log('[articuLeet]' + sectionNames[key] + ' duration: ' + s.seconds + 's (' + fmt(s.seconds) + ')');
         s.chunks = [];
         s.recorder = null;
         s.recording = false;
         s.paused = false;
         tickStop(key);
         refreshUI(key);
-        releaseMic();
         updateCloseButtons();
         resolve();
       }, { once: true });
@@ -448,23 +594,28 @@
       el.innerHTML = html;
     }
 
-    var comm = data.Communication || 0;
-    var ps   = data.Ps || 0;
-    var code = data.code || 0;
+    // Support both backend format and analyze format
+    var comm = data.score_comm || data.Communication || 0;
+    var ps   = data.score_ps || data.Ps || 0;
+    var code = data.score_technical || data.code || 0;
 
     renderDots('fb-communication', comm, 4);
     renderDots('fb-ps', ps, 4);
     renderDots('fb-code', code, 4);
 
-    var overall = Math.round((comm + ps + code) / 3);
+    var overall = data.score_overall || Math.round((comm + ps + code) / 3);
     renderDots('fb-overall', overall, 4);
+
+    // Support both "Pass" (from analyze) and "pass" (from DB)
+    var passed = data.Pass;
+    if (passed === undefined) passed = data.pass;
 
     var badge = root.querySelector('#fb-pass-fail');
     if (badge) {
-      if (data.Pass === true) {
+      if (passed === true) {
         badge.textContent = 'PASS';
         badge.className = 'pass-fail-badge pass';
-      } else if (data.Pass === false) {
+      } else if (passed === false) {
         badge.textContent = 'FAIL';
         badge.className = 'pass-fail-badge fail';
       } else {
@@ -475,7 +626,7 @@
 
     var takeaway = root.querySelector('#fb-takeaway');
     if (takeaway) {
-      takeaway.textContent = data.overall_takeaway || '';
+      takeaway.textContent = data.overall_takeaway || data.feedback_overall || '';
     }
   }
 
@@ -499,20 +650,81 @@
     if (takeaway) takeaway.textContent = '';
   }
 
-  // ===== AUTH (local only — no backend needed) =====
-  function getAuthToken() {
-    return new Promise(function (resolve, reject) {
-      chrome.storage.local.get('access_token', function (result) {
-        if (result.access_token) {
-          resolve(result.access_token);
-        } else {
-          reject(new Error('No auth token'));
-        }
+  // ===== FEEDBACK UI STATES =====
+  function showFeedbackLoading() {
+    var loading = root.querySelector('#fb-loading');
+    var error = root.querySelector('#fb-error');
+    var results = root.querySelector('#fb-results');
+    if (loading) loading.classList.remove('hidden');
+    if (error) error.classList.add('hidden');
+    if (results) results.classList.add('hidden');
+  }
+
+  function showFeedbackError(message) {
+    var loading = root.querySelector('#fb-loading');
+    var error = root.querySelector('#fb-error');
+    var results = root.querySelector('#fb-results');
+    var detail = root.querySelector('#fb-error-detail');
+    if (loading) loading.classList.add('hidden');
+    if (error) error.classList.remove('hidden');
+    if (results) results.classList.add('hidden');
+    if (detail) detail.textContent = message || 'Something went wrong.';
+  }
+
+  function showFeedbackResults() {
+    var loading = root.querySelector('#fb-loading');
+    var error = root.querySelector('#fb-error');
+    var results = root.querySelector('#fb-results');
+    if (loading) loading.classList.add('hidden');
+    if (error) error.classList.add('hidden');
+    if (results) results.classList.remove('hidden');
+  }
+
+  // ===== AUTH =====
+  function getStoredTokens() {
+    return new Promise(function (resolve) {
+      chrome.storage.local.get(['access_token', 'refresh_token'], function (result) {
+        resolve(result);
       });
     });
   }
 
-  // Decode the JWT payload to get user info without calling backend
+  function refreshAccessToken(refreshToken) {
+    return fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON_KEY },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Refresh failed');
+      return res.json();
+    }).then(function (data) {
+      var tokenData = { access_token: data.access_token };
+      if (data.refresh_token) tokenData.refresh_token = data.refresh_token;
+      return new Promise(function (resolve) {
+        chrome.storage.local.set(tokenData, function () {
+          console.log('[articuLeet] Token refreshed successfully');
+          resolve(data.access_token);
+        });
+      });
+    });
+  }
+
+  function getAuthToken() {
+    return getStoredTokens().then(function (tokens) {
+      if (!tokens.access_token) throw new Error('No auth token');
+
+      // Check if token is expired or about to expire (within 60s)
+      var payload = decodeJwtPayload(tokens.access_token);
+      var now = Math.floor(Date.now() / 1000);
+      if (payload && payload.exp && payload.exp < now + 60 && tokens.refresh_token) {
+        console.log('[articuLeet] Token expired/expiring, refreshing...');
+        return refreshAccessToken(tokens.refresh_token);
+      }
+
+      return tokens.access_token;
+    });
+  }
+
   function decodeJwtPayload(token) {
     try {
       var base64 = token.split('.')[1];
@@ -526,11 +738,8 @@
   function validateTokenLocally(token) {
     var payload = decodeJwtPayload(token);
     if (!payload) return null;
-
-    // Check if token is expired
     var now = Math.floor(Date.now() / 1000);
     if (payload.exp && payload.exp < now) return null;
-
     return {
       id: payload.sub || '',
       email: payload.email || '',
@@ -565,7 +774,6 @@
       });
   }
 
-  // Listen for token arriving from website after OAuth
   chrome.storage.onChanged.addListener(function (changes, area) {
     if (area === 'local' && changes.access_token && changes.access_token.newValue) {
       var user = validateTokenLocally(changes.access_token.newValue);
@@ -577,29 +785,203 @@
     }
   });
 
-  // ===== DOWNLOAD RECORDINGS (testing only) =====
-  function downloadRecordings() {
-    sectionKeys.forEach(function (key) {
-      var s = sec[key];
-      if (!s.blob) return;
-
-      var url = URL.createObjectURL(s.blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      setTimeout(function () {
-        URL.revokeObjectURL(url);
-      }, 1000);
+  // ===== API HELPERS =====
+  function apiPost(path, body, token) {
+    return fetch(API_BASE + path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token,
+      },
+      body: JSON.stringify(body),
+    }).then(function (res) {
+      if (res.status === 401) {
+        onAuthFail();
+        throw new Error('Session expired — please sign in again');
+      }
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error('API ' + path + ' failed (' + res.status + '): ' + t);
+        });
+      }
+      return res.json();
     });
-
-    console.log('[articuLeet] Downloaded all recorded sections');
   }
 
-  // ===== COMPLETE (mock feedback — no backend) =====
+  function apiUploadAudio(blob, token) {
+    var ext = 'webm';
+    var mime = blob.type || 'audio/webm';
+    if (mime.indexOf('mp4') !== -1) ext = 'mp4';
+    if (mime.indexOf('ogg') !== -1) ext = 'ogg';
+    
+    var filename = 'recording.' + ext;
+    
+    console.log('[articuLeet] === UPLOAD DEBUG ===');
+    console.log('  Blob size:', blob.size, 'bytes');
+    console.log('  Blob type:', blob.type);
+    console.log('  Filename:', filename);
+
+    return fetch(API_BASE + '/transcribe', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/octet-stream',
+        'X-Filename': filename,
+        'X-Content-Type': blob.type || 'audio/webm',
+      },
+      body: blob,
+    }).then(function (res) {
+      if (res.status === 401) {
+        onAuthFail();
+        throw new Error('Session expired — please sign in again');
+      }
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error('Transcribe failed (' + res.status + '): ' + t);
+        });
+      }
+      return res.json();
+    }).then(function (result) {
+      console.log('  Transcript:', result.text ? result.text.substring(0, 100) : '(empty)');
+      return result;
+    });
+  }
+
+  // ===== UPLOAD & ANALYZE SESSION =====
+  var lastSessionBlobs = null;
+
+  function uploadSession() {
+    var token;
+    var sessionId;
+    var transcripts = {};
+    var userCode = '';
+
+    showFeedbackLoading();
+
+    lastSessionBlobs = {};
+    sectionKeys.forEach(function (key) {
+      lastSessionBlobs[key] = sec[key].blob;
+    });
+
+    return getEditorCode()
+      .then(function (code) {
+        userCode = code;
+        console.log('[articuLeet] ===== USER CODE =====');
+        console.log(userCode || '(no code found)');
+        console.log('[articuLeet] ====================');
+
+        return getAuthToken();
+      })
+      .then(function (t) {
+        token = t;
+        console.log('[articuLeet] Creating session...');
+
+        return apiPost('/sessions/start', {
+          problem_name: problemName,
+          problem_url: window.location.href,
+        }, token);
+      })
+      .then(function (session) {
+        sessionId = session.id;
+        console.log('[articuLeet] Session created:', sessionId);
+
+        var jobs = sectionKeys.map(function (key) {
+          var blob = lastSessionBlobs[key];
+          if (!blob) {
+            transcripts[key] = null;
+            return Promise.resolve();
+          }
+          console.log('[articuLeet] Transcribing ' + key + ' (' + Math.round(blob.size / 1024) + 'KB)...');
+          return apiUploadAudio(blob, token).then(function (result) {
+            transcripts[key] = result.text;
+          });
+        });
+
+        return Promise.all(jobs);
+      })
+      .then(function () {
+        console.log('[articuLeet] ===== TRANSCRIPTS =====');
+        sectionKeys.forEach(function (key) {
+          console.log('[articuLeet] --- ' + sectionNames[key] + ' ---');
+          console.log(transcripts[key] || '(skipped)');
+          console.log('');
+        });
+        console.log('[articuLeet] =======================');
+
+        // Combined transcript for saving to DB
+        var combined = sectionKeys.map(function (key) {
+          return '## ' + sectionNames[key] + '\n' + (transcripts[key] || '(skipped)');
+        }).join('\n\n');
+
+        console.log('[articuLeet] Saving transcript & details...');
+
+        return apiPost('/sessions/details', {
+          session_id: sessionId,
+          transcript: combined,
+          code: userCode,
+          problem_statement: problemName,
+        }, token).then(function () {
+          return combined;
+        });
+      })
+      .then(function (combined) {
+        console.log('[articuLeet] Analyzing transcript...');
+
+        // Send individual sections to /analyze (matches AnalyzeRequest schema)
+        return apiPost('/analyze', {
+          code: userCode,
+          problem_statement: problemName,
+          constraints: '',
+          language: '',
+          section_1: transcripts.sec1 || '',
+          section_2: transcripts.sec2 || '',
+          section_3: transcripts.sec3 || '',
+          section_4: transcripts.sec4 || '',
+          section_5: transcripts.sec5 || '',
+        }, token);
+      })
+      .then(function (scores) {
+        console.log('[articuLeet] ===== ANALYSIS RESULTS =====');
+        console.log(JSON.stringify(scores, null, 2));
+        console.log('[articuLeet] ============================');
+
+        var totalSeconds = 0;
+        sectionKeys.forEach(function (k) { totalSeconds += sec[k].seconds; });
+
+        return Promise.all([
+          apiPost('/sessions/score', {
+            session_id: sessionId,
+            score_overall: scores.score_overall || 0,
+            feedback_overall: scores.feedback_overall || '',
+            score_comm: scores.score_comm || 0,
+            feedback_comm: scores.feedback_comm || '',
+            score_ps: scores.score_ps || 0,
+            feedback_ps: scores.feedback_ps || '',
+            score_technical: scores.score_technical || 0,
+            feedback_technical: scores.feedback_technical || '',
+            pass: scores.pass !== undefined ? scores.pass : false,
+            overall_takeaway: scores.overall_takeaway || '',
+          }, token),
+          apiPost('/sessions/finish', {
+            session_id: sessionId,
+            total_time: Math.floor(totalSeconds / 60),
+          }, token),
+        ]).then(function () {
+          return scores;
+        });
+      })
+      .then(function (scores) {
+        updateFeedback(scores);
+        showFeedbackResults();
+        console.log('[articuLeet] Session saved successfully!');
+      })
+      .catch(function (err) {
+        console.error('[articuLeet] Upload failed:', err);
+        showFeedbackError(err.message || 'Something went wrong.');
+      });
+  }
+
+  // ===== COMPLETE =====
   function updateComplete() {
     var total = 0;
     var done = 0;
@@ -634,20 +1016,8 @@
       }).join('');
     }
 
-    // Mock feedback — replace with real API call when backend is deployed
-    console.log('[articuLeet] Session complete (' + done + '/5 sections, ' + fmt(total) + ' total)');
-    console.log('[articuLeet] Backend not connected — showing mock feedback');
-
-    updateFeedback({
-      Communication: 3,
-      Communication_reason: 'Clear explanation of constraints and edge cases.',
-      Ps: 3,
-      Ps_reason: 'Chose optimal hashmap approach quickly.',
-      code: 2,
-      code_reason: 'Minor variable naming issues.',
-      Pass: true,
-      overall_takeaway: 'Solid walkthrough — tighten up variable naming and narrate edge-case handling earlier.'
-    });
+    // Upload → Transcribe → Analyze → Save → Show
+    uploadSession();
   }
 
   function resetAll() {
@@ -656,9 +1026,40 @@
     });
     releaseMic();
     currentSection = null;
+    lastSessionBlobs = null;
     resetFeedback();
+    showFeedbackLoading();
     updateCloseButtons();
   }
+
+    // ===== SIGN OUT =====
+    function signOut() {
+      // Stop any active recording first
+      if (currentSection && sec[currentSection] && sec[currentSection].recording) {
+        var key = currentSection;
+        var s = sec[key];
+        if (s.recorder && s.recorder.state !== 'inactive') {
+          s.recorder.ondataavailable = null;
+          s.recorder.stop();
+        }
+        tickStop(key);
+        s.recording = false;
+        s.paused = false;
+      }
+      
+      resetAll();
+  
+      chrome.storage.local.remove('access_token');
+  
+      authedUser = null;
+  
+      releaseMic();
+  
+      lastScreen = 'login';
+      show('login');
+  
+      console.log('[articuLeet] Signed out');
+    }
 
   // ===== WIRE UP SECTION BUTTONS =====
   sectionKeys.forEach(function (key, index) {
@@ -727,28 +1128,28 @@
     if (currentSection) restartRec(currentSection);
   });
 
-    // ===== DOWNLOAD RECORDINGS (testing only) =====
-    function downloadRecordings() {
-      sectionKeys.forEach(function (key) {
-        var s = sec[key];
-        if (!s.blob) return;
-  
-        var url = URL.createObjectURL(s.blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-  
-        // Clean up the object URL after a short delay
-        setTimeout(function () {
-          URL.revokeObjectURL(url);
-        }, 1000);
-      });
-  
-      console.log('[articuLeet] Downloaded all recorded sections');
-    }
+  // ===== DOWNLOAD RECORDINGS (testing only) =====
+  // function downloadRecordings() {
+  //   sectionKeys.forEach(function (key) {
+  //     var s = sec[key];
+  //     if (!s.blob) return;
+
+  //     var url = URL.createObjectURL(s.blob);
+  //     var a = document.createElement('a');
+  //     a.href = url;
+  //     a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
+  //     document.body.appendChild(a);
+  //     a.click();
+  //     document.body.removeChild(a);
+
+  //     // Clean up the object URL after a short delay
+  //     setTimeout(function () {
+  //       URL.revokeObjectURL(url);
+  //     }, 1000);
+  //   });
+
+  //   console.log('[articuLeet] Downloaded all recorded sections');
+  // }
 
   // ===== NAV BUTTONS =====
   root.querySelector('#btn-start-recording').addEventListener('click', function () {
@@ -760,9 +1161,9 @@
     show('start');
   });
 
-  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
-    downloadRecordings();
-  });
+  // root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+  //   downloadRecordings();
+  // });
 
   root.querySelector('#btn-expand-mini').addEventListener('click', function () {
     show(lastScreen);
@@ -790,22 +1191,37 @@
 
   // ===== LOGIN BUTTON =====
   root.querySelector('#btn-google-signin').addEventListener('click', function () {
-    window.open('https://articuleet.com/auth/extension', '_blank');
+    var authUrl = new URL('https://articuleet.com/auth/extension');
+    authUrl.searchParams.set('returnTo', window.location.href);
+    window.open(authUrl.toString(), '_blank');
   });
 
-  // ===== DASHBOARD BUTTONS =====
-  root.querySelectorAll('.btn-outline').forEach(function (btn) {
-    if (btn.textContent.trim() === 'View Dashboard' || btn.textContent.trim() === 'View Full Analysis') {
-      btn.addEventListener('click', function () {
-        window.open(DASHBOARD_URL, '_blank');
-      });
-    }
+  // ===== DASHBOARD BUTTON =====
+  root.querySelector('#btn-dashboard').addEventListener('click', function () {
+    window.open(DASHBOARD_URL, '_blank');
+  });
+
+  // ===== VIEW ANALYSIS BUTTON =====
+  root.querySelector('#btn-view-analysis').addEventListener('click', function () {
+    window.open(DASHBOARD_URL, '_blank');
   });
 
   // ===== DOWNLOAD BUTTON =====
-  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
-    downloadRecordings();
+  // root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+  //   downloadRecordings();
+  // });
+
+  // ===== RETRY BUTTON =====
+  root.querySelector('#btn-retry-analysis').addEventListener('click', function () {
+    uploadSession();
   });
+
+    // ===== SIGN OUT BUTTON =====
+    root.querySelectorAll('.signout-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        signOut();
+      });
+    });
 
   // ===== INIT =====
   updateCloseButtons();

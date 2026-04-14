@@ -159,7 +159,11 @@ export async function fetchDashboardHomeData(): Promise<DashboardHomeData> {
       const date = Number.isNaN(parsedDate.getTime())
         ? session.created_at
         : new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(parsedDate)
-      return { date, score: scoreBySession.get(session.id) as number }
+      return {
+        x: session.id,
+        date,
+        score: scoreBySession.get(session.id) as number,
+      }
     })
 
   return {
@@ -228,4 +232,22 @@ export async function fetchDashboardSessionDetail(sessionId: string): Promise<Da
     signedIn: true,
     detail: mapSessionDetail(typedSessionRow, (scoreRow as ScoreRow | null) ?? null, (detailsRow as ProblemDetailsRow | null) ?? null),
   }
+}
+
+export async function deleteDashboardSession(sessionId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('You must be signed in to delete a session.')
+  }
+
+  const { error } = await supabase
+    .from('sessions')
+    .delete()
+    .eq('id', sessionId)
+    .eq('user_id', user.id)
+
+  if (error) throw error
 }

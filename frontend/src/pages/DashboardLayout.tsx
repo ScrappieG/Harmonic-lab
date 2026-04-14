@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet, useNavigate, useOutletContext } from 'react-router-dom'
 
 import AccountManagementModal from '@/components/dashboard/AccountManagementModal'
+import { deleteCurrentAccount } from '@/lib/accountApi'
 import { fetchDashboardHomeData, type DashboardHomeData } from '@/lib/dashboardData'
 import { supabase } from '@/lib/supabase'
 
@@ -20,6 +21,8 @@ function DashboardLayout() {
   const [dashboardData, setDashboardData] = useState<DashboardHomeData | null>(null)
   const [accountEmail, setAccountEmail] = useState('Signed in')
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
+  const [accountDeletionError, setAccountDeletionError] = useState<string | null>(null)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -83,6 +86,36 @@ function DashboardLayout() {
     }
   }, [navigate])
 
+  const handleAccountModalOpenChange = useCallback((open: boolean) => {
+    setIsAccountModalOpen(open)
+    if (!open) {
+      setAccountDeletionError(null)
+    }
+  }, [])
+
+  const handleDeleteAccount = useCallback(async () => {
+    setIsDeletingAccount(true)
+    setAccountDeletionError(null)
+
+    try {
+      await deleteCurrentAccount()
+      const { error: signOutError } = await supabase.auth.signOut()
+      if (signOutError) {
+        console.error('Sign out after account deletion failed:', signOutError)
+      }
+
+      setDashboardData(null)
+      setAccountEmail('Signed in')
+      setIsAccountModalOpen(false)
+      navigate('/', { replace: true })
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete account.'
+      setAccountDeletionError(message)
+    } finally {
+      setIsDeletingAccount(false)
+    }
+  }, [navigate])
+
   return (
     <div
       className={`relative min-h-screen overflow-hidden ${
@@ -114,8 +147,11 @@ function DashboardLayout() {
 
       <AccountManagementModal
         open={isAccountModalOpen}
-        onOpenChange={setIsAccountModalOpen}
+        onOpenChange={handleAccountModalOpenChange}
+        accountDeletionError={accountDeletionError}
         email={accountEmail}
+        isDeletingAccount={isDeletingAccount}
+        onDeleteAccount={handleDeleteAccount}
         onSignOut={handleSignOut}
         isSigningOut={isSigningOut}
         isDarkMode={isDarkMode}

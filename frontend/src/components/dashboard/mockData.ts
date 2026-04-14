@@ -11,11 +11,11 @@ export const dashboardStats: DashboardStats = {
 }
 
 export const sessionTrend: SessionTrendPoint[] = [
-  { date: 'Feb 4', score: 3.3 },
-  { date: 'Feb 7', score: 2.3 },
-  { date: 'Feb 9', score: 3.1 },
-  { date: 'Feb 11', score: 2.6 },
-  { date: 'Feb 13', score: 2.9 },
+  { x: 'session-05', date: 'Feb 4', score: 3.3 },
+  { x: 'session-04', date: 'Feb 7', score: 2.3 },
+  { x: 'session-03', date: 'Feb 9', score: 3.1 },
+  { x: 'session-02', date: 'Feb 11', score: 2.6 },
+  { x: 'session-01', date: 'Feb 13', score: 2.9 },
 ]
 
 export const sessionDetails: SessionDetailData[] = [

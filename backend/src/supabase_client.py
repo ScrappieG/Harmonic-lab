@@ -1,9 +1,10 @@
-import httpx
 from fastapi import HTTPException
 
 
 class SupabaseClient:
     def __init__(self, url: str, key: str):
+        import httpx
+        self._httpx = httpx
         self.url = url.rstrip("/")
         self.headers = {
             "apikey": key,
@@ -19,7 +20,7 @@ class SupabaseClient:
         params = {"select": query}
         if filters:
             params.update(filters)
-        async with httpx.AsyncClient() as client:
+        async with self._httpx.AsyncClient() as client:
             response = await client.get(
                 self._rest_url(table),
                 headers={**self.headers, "Prefer": "return=representation"},
@@ -30,7 +31,7 @@ class SupabaseClient:
 
     async def insert(self, table: str, data: dict | list) -> list:
         """INSERT one or more rows. Returns inserted rows."""
-        async with httpx.AsyncClient() as client:
+        async with self._httpx.AsyncClient() as client:
             response = await client.post(
                 self._rest_url(table),
                 headers={**self.headers, "Prefer": "return=representation"},
@@ -41,7 +42,7 @@ class SupabaseClient:
 
     async def update(self, table: str, data: dict, filters: dict) -> list:
         """UPDATE rows matching filters. filters = {"column": "eq.value", ...}"""
-        async with httpx.AsyncClient() as client:
+        async with self._httpx.AsyncClient() as client:
             response = await client.patch(
                 self._rest_url(table),
                 headers={**self.headers, "Prefer": "return=representation"},
@@ -53,7 +54,7 @@ class SupabaseClient:
 
     async def auth_get_user(self, access_token: str) -> dict:
         """Validate a JWT and return the user. Raises HTTPException if invalid."""
-        async with httpx.AsyncClient() as client:
+        async with self._httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.url}/auth/v1/user",
                 headers={**self.headers, "Authorization": f"Bearer {access_token}"},
@@ -65,7 +66,7 @@ class SupabaseClient:
 
     async def upsert(self, table: str, data: dict | list, on_conflict: str) -> list:
         """UPSERT rows, merging on the given conflict column(s)."""
-        async with httpx.AsyncClient() as client:
+        async with self._httpx.AsyncClient() as client:
             response = await client.post(
                 self._rest_url(table),
                 headers={**self.headers, "Prefer": "return=representation,resolution=merge-duplicates"},
@@ -77,7 +78,7 @@ class SupabaseClient:
 
     async def delete(self, table: str, filters: dict) -> list:
         """DELETE rows matching filters. filters = {"column": "eq.value", ...}"""
-        async with httpx.AsyncClient() as client:
+        async with self._httpx.AsyncClient() as client:
             response = await client.delete(
                 self._rest_url(table),
                 headers={**self.headers, "Prefer": "return=representation"},
@@ -86,12 +87,25 @@ class SupabaseClient:
         response.raise_for_status()
         return response.json()
 
+    async def delete_auth_user(self, user_id: str, should_soft_delete: bool = False) -> dict:
+        """Delete an auth user via the admin API. Requires service_role credentials."""
+        async with self._httpx.AsyncClient() as client:
+            response = await client.delete(
+                f"{self.url}/auth/v1/admin/users/{user_id}",
+                headers=self.headers,
+                params={"should_soft_delete": str(should_soft_delete).lower()},
+            )
+        response.raise_for_status()
+        if not response.content:
+            return {"id": user_id, "deleted": True}
+        return response.json()
+
 
 def get_supabase(request) -> SupabaseClient:
     """Get a SupabaseClient from the Cloudflare Worker env attached to the request."""
     env = request.scope["env"]
     url = getattr(env, "SUPABASE_PUB_URL", None)
-    key = getattr(env, "SUPABASE_PUB_KEY", None)
+    key = getattr(env, "SUPABASE_SERV_KEY", None)
     if not url or not key:
         raise HTTPException(status_code=500, detail="SUPABASE_URL or SUPABASE_KEY missing")
     return SupabaseClient(url, key)

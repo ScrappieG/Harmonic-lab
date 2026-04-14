@@ -7,6 +7,6 @@
     "dev": "cd backend && uv run pywrangler dev"
   },
   "devDependencies": {
-    "wrangler": "^4.67.0"
+    "wrangler": "4.67.0"
   }
 }

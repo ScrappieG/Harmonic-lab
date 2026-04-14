@@ -67,3 +67,22 @@ async def insert_user(db: SupabaseClient, user_id: str, email: str) -> dict:
         on_conflict="id",
     )
     return rows[0]
+
+
+async def delete_user_account(db: SupabaseClient, user_id: str) -> dict:
+    sessions = await db.select(
+        "sessions",
+        query="id",
+        filters={"user_id": f"eq.{user_id}"},
+    )
+
+    session_ids = [session["id"] for session in sessions]
+    for session_id in session_ids:
+        await db.delete("score", {"session_id": f"eq.{session_id}"})
+        await db.delete("problem_details", {"session_id": f"eq.{session_id}"})
+
+    await db.delete("sessions", {"user_id": f"eq.{user_id}"})
+    await db.delete("User", {"id": f"eq.{user_id}"})
+    await db.delete_auth_user(user_id)
+
+    return {"deleted": True, "session_count": len(session_ids)}
