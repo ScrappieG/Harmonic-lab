@@ -129,7 +129,7 @@
 
   var host = document.createElement('div');
   host.id = 'articuleet-host';
-  host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647;';
+  host.style.cssText = 'position:fixed; bottom:20px; right:20px; z-index:2147483647; visibility:hidden;';
   document.body.appendChild(host);
 
   var userClosed = false;
@@ -165,6 +165,46 @@
   root.className = 'widget-root';
   root.innerHTML = WIDGET_HTML;
   shadow.appendChild(root);
+
+  // ===== WAIT FOR ASSETS BEFORE SHOWING =====
+  function revealWidget() {
+    if (userClosed) return;
+    host.style.visibility = 'visible';
+    host.style.opacity = '0';
+    host.offsetHeight; // force reflow
+    host.style.transition = 'opacity 0.2s ease-in';
+    host.style.opacity = '1';
+    console.log('[articuLeet] Widget revealed');
+  }
+
+  // Wait for both widget CSS and fonts to load
+  var cssReady = new Promise(function (resolve) {
+    cssLink.addEventListener('load', resolve);
+    cssLink.addEventListener('error', resolve); // show even if CSS fails
+  });
+
+  var fontsReady = new Promise(function (resolve) {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(resolve);
+    } else {
+      // Fallback for browsers without Font Loading API
+      resolve();
+    }
+  });
+
+  // Also add a maximum wait time so the widget always appears
+  var maxWait = new Promise(function (resolve) {
+    setTimeout(resolve, 3000);
+  });
+
+  Promise.all([cssReady, fontsReady]).then(revealWidget);
+  maxWait.then(function () {
+    // Force reveal if assets are taking too long
+    if (host.style.visibility === 'hidden') {
+      console.warn('[articuLeet] Asset load timeout — force revealing widget');
+      revealWidget();
+    }
+  });
 
   // ===== INJECT PROBLEM NAME =====
   function injectName() {
@@ -207,6 +247,10 @@
         setTimeout(retryName, 1500);
         if (!userClosed) {
           host.style.display = '';
+          host.style.opacity = '0';
+          host.offsetHeight;
+          host.style.transition = 'opacity 0.2s ease-in';
+          host.style.opacity = '1';
         }
       } else {
         host.style.display = 'none';
@@ -937,28 +981,6 @@
       });
   }
 
-  // ===== DOWNLOAD RECORDINGS (testing only) =====
-  function downloadRecordings() {
-    sectionKeys.forEach(function (key) {
-      var s = sec[key];
-      if (!s.blob) return;
-
-      var url = URL.createObjectURL(s.blob);
-      var a = document.createElement('a');
-      a.href = url;
-      a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      setTimeout(function () {
-        URL.revokeObjectURL(url);
-      }, 1000);
-    });
-
-    console.log('[articuLeet] Downloaded all recorded sections');
-  }
-
   // ===== COMPLETE =====
   function updateComplete() {
     var total = 0;
@@ -1009,6 +1031,35 @@
     showFeedbackLoading();
     updateCloseButtons();
   }
+
+    // ===== SIGN OUT =====
+    function signOut() {
+      // Stop any active recording first
+      if (currentSection && sec[currentSection] && sec[currentSection].recording) {
+        var key = currentSection;
+        var s = sec[key];
+        if (s.recorder && s.recorder.state !== 'inactive') {
+          s.recorder.ondataavailable = null;
+          s.recorder.stop();
+        }
+        tickStop(key);
+        s.recording = false;
+        s.paused = false;
+      }
+      
+      resetAll();
+  
+      chrome.storage.local.remove('access_token');
+  
+      authedUser = null;
+  
+      releaseMic();
+  
+      lastScreen = 'login';
+      show('login');
+  
+      console.log('[articuLeet] Signed out');
+    }
 
   // ===== WIRE UP SECTION BUTTONS =====
   sectionKeys.forEach(function (key, index) {
@@ -1077,28 +1128,28 @@
     if (currentSection) restartRec(currentSection);
   });
 
-    // ===== DOWNLOAD RECORDINGS (testing only) =====
-    function downloadRecordings() {
-      sectionKeys.forEach(function (key) {
-        var s = sec[key];
-        if (!s.blob) return;
-  
-        var url = URL.createObjectURL(s.blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-  
-        // Clean up the object URL after a short delay
-        setTimeout(function () {
-          URL.revokeObjectURL(url);
-        }, 1000);
-      });
-  
-      console.log('[articuLeet] Downloaded all recorded sections');
-    }
+  // ===== DOWNLOAD RECORDINGS (testing only) =====
+  // function downloadRecordings() {
+  //   sectionKeys.forEach(function (key) {
+  //     var s = sec[key];
+  //     if (!s.blob) return;
+
+  //     var url = URL.createObjectURL(s.blob);
+  //     var a = document.createElement('a');
+  //     a.href = url;
+  //     a.download = problemName.replace(/\s+/g, '-').toLowerCase() + '_' + key + '.webm';
+  //     document.body.appendChild(a);
+  //     a.click();
+  //     document.body.removeChild(a);
+
+  //     // Clean up the object URL after a short delay
+  //     setTimeout(function () {
+  //       URL.revokeObjectURL(url);
+  //     }, 1000);
+  //   });
+
+  //   console.log('[articuLeet] Downloaded all recorded sections');
+  // }
 
   // ===== NAV BUTTONS =====
   root.querySelector('#btn-start-recording').addEventListener('click', function () {
@@ -1110,9 +1161,9 @@
     show('start');
   });
 
-  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
-    downloadRecordings();
-  });
+  // root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+  //   downloadRecordings();
+  // });
 
   root.querySelector('#btn-expand-mini').addEventListener('click', function () {
     show(lastScreen);
@@ -1156,14 +1207,21 @@
   });
 
   // ===== DOWNLOAD BUTTON =====
-  root.querySelector('#btn-download-recordings').addEventListener('click', function () {
-    downloadRecordings();
-  });
+  // root.querySelector('#btn-download-recordings').addEventListener('click', function () {
+  //   downloadRecordings();
+  // });
 
   // ===== RETRY BUTTON =====
   root.querySelector('#btn-retry-analysis').addEventListener('click', function () {
     uploadSession();
   });
+
+    // ===== SIGN OUT BUTTON =====
+    root.querySelectorAll('.signout-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        signOut();
+      });
+    });
 
   // ===== INIT =====
   updateCloseButtons();
