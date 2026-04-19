@@ -655,9 +655,11 @@
     var loading = root.querySelector('#fb-loading');
     var error = root.querySelector('#fb-error');
     var results = root.querySelector('#fb-results');
+    var actions = root.querySelector('#fb-actions');
     if (loading) loading.classList.remove('hidden');
     if (error) error.classList.add('hidden');
     if (results) results.classList.add('hidden');
+    if (actions) actions.classList.add('hidden')
   }
 
   function showFeedbackError(message) {
@@ -665,19 +667,23 @@
     var error = root.querySelector('#fb-error');
     var results = root.querySelector('#fb-results');
     var detail = root.querySelector('#fb-error-detail');
+    var actions = root.querySelector('#fb-actions');
     if (loading) loading.classList.add('hidden');
     if (error) error.classList.remove('hidden');
     if (results) results.classList.add('hidden');
     if (detail) detail.textContent = message || 'Something went wrong.';
+    if (actions) actions.classList.remove('hidden');
   }
 
   function showFeedbackResults() {
     var loading = root.querySelector('#fb-loading');
     var error = root.querySelector('#fb-error');
     var results = root.querySelector('#fb-results');
+    var actions = root.querySelector('#fb-actions');
     if (loading) loading.classList.add('hidden');
     if (error) error.classList.add('hidden');
     if (results) results.classList.remove('hidden');
+    if (actions) actions.classList.remove('hidden');
   }
 
   // ===== AUTH =====

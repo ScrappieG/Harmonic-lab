@@ -384,7 +384,7 @@ const WIDGET_HTML = `
       <p class="overall-takeaway" id="fb-takeaway"></p>
     </div>
 
-    <div class="row-center gap-12" style="margin-top:16px">
+    <div class="row-center gap-12 hidden" id="fb-actions" style="margin-top:16px">
       <button class="btn-outline" id="btn-view-analysis">View Full Analysis</button>
       <button class="btn-outline" id="btn-new-session">New Session</button>
     </div>
