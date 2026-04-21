@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from './ui/button'
 
 const creators = ['Evan Hadam', 'Jimmy Liu', 'Aiden Shay', 'Jack Stone']
+const chromeWebStoreUrl = 'https://chromewebstore.google.com/detail/moboihkcjppfgpkcijocidnplineodga'
 
 function AboutSection() {
   const reduceMotion = useReducedMotion() ?? false
@@ -52,7 +53,7 @@ function AboutSection() {
 
             <div className="mt-6">
               <Button asChild className="h-11 rounded-md bg-lime-700 px-5 text-sm font-semibold text-stone-950 hover:bg-lime-600">
-                <a href="#" aria-label="Install Chrome extension">
+                <a href={chromeWebStoreUrl} target="_blank" rel="noopener noreferrer" aria-label="Install Chrome extension">
                   Install Chrome Extension
                 </a>
               </Button>
