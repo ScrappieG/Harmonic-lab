@@ -25,6 +25,8 @@ const feedbackItems = [
   },
 ]
 
+const chromeWebStoreUrl = 'https://chromewebstore.google.com/detail/moboihkcjppfgpkcijocidnplineodga'
+
 const maxRating = 4
 
 function HeroSection() {
@@ -47,10 +49,15 @@ function HeroSection() {
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-3">
-            <Button className="h-11 rounded-md bg-lime-900 px-5 text-sm font-semibold text-white hover:bg-lime-950">
-              Start practicing
+            <a
+              href={chromeWebStoreUrl}
+              target="_blank"
+              rel="noopener noreferrer">
+              <Button className="h-11 rounded-md bg-lime-900 px-5 text-sm font-semibold text-white hover:bg-lime-950">
+                Start practicing
               <ArrowRight className="size-4" />
             </Button>
+            </a>
           </div>
 
           <div className="mt-12 border-t border-stone-300 pt-7">
